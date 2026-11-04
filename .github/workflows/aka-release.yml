@@ -69,9 +69,9 @@ jobs:
       - name: Archive (exe + SDL2.dll + données)
         run: |
           mkdir IronTournament-PC-windows
-          cp build-pc/irontournament.exe IronTournament-PC-windows/
-          cp /mingw64/bin/SDL2.dll IronTournament-PC-windows/
-          cp -r aka/sd/IRONTOURNAMENT IronTournament-PC-windows/
+          cp -r aka/sd/IRONTOURNAMENT IronTournament-PC-windows/IRONTOURNAMENT
+          cp build-pc/irontournament.exe IronTournament-PC-windows/irontournament.exe
+          cp /mingw64/bin/SDL2.dll IronTournament-PC-windows/SDL2.dll
           zip -r IronTournament-PC-windows-${TAG}.zip IronTournament-PC-windows
       - uses: actions/upload-artifact@v4
         with:
