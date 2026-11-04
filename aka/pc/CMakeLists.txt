@@ -38,14 +38,16 @@ target_include_directories(irontournament PRIVATE
 target_compile_definitions(irontournament PRIVATE IRON_PC=1 IRON_ASSET_DIR="${ROOT}/main/assets")
 target_compile_options(irontournament PRIVATE -Wall -Wextra -Wno-unused-parameter)
 
-if(TARGET SDL2::SDL2)
+if(MINGW AND TARGET SDL2::SDL2main)
+  # Ordre impose : mingw32, SDL2main, puis SDL2
+  target_link_libraries(irontournament PRIVATE mingw32 SDL2::SDL2main SDL2::SDL2)
+elseif(TARGET SDL2::SDL2)
   target_link_libraries(irontournament PRIVATE SDL2::SDL2)
 else()
   target_include_directories(irontournament PRIVATE ${SDL2_INCLUDE_DIRS})
   target_link_libraries(irontournament PRIVATE ${SDL2_LIBRARIES})
 endif()
 if(MINGW)
-  target_link_libraries(irontournament PRIVATE mingw32 SDL2::SDL2main)
   target_link_options(irontournament PRIVATE -mwindows -static-libgcc -static-libstdc++)
 endif()
 
