@@ -1,0 +1,6 @@
+{
+  "name": "Iron Tournament AKA",
+  "description": "Jeu de combat rétro dans l'esprit Street Fighter II et Mortal Kombat conçu pour la Gamebuino AKA, avec 6 combattants équilibrés, IA pilotée par la personnalité, mode Histoire scénarisé, mode Versus local et export C++ Gamebuino.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
