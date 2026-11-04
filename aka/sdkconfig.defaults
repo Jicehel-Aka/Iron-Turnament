@@ -1,0 +1,22 @@
+# sdkconfig.defaults — Iron Tournament AKA
+#
+# Le `sdkconfig` fourni a cote est celui des autres jeux AKA, repris tel quel
+# (meme carte, meme LCD, meme PSRAM octale) a UNE difference pres : les noms de
+# fichiers longs sont actives. Ce fichier ne sert que de garde-fou.
+
+CONFIG_IDF_TARGET="esp32s3"
+
+CONFIG_SPIRAM=y
+CONFIG_SPIRAM_MODE_OCT=y
+CONFIG_SPIRAM_TYPE_AUTO=y
+
+# Carte SD en FAT, NOMS LONGS ACCEPTES (config.dat, capture_0001.bmp...).
+# Le sdkconfig de mAKArena avait CONFIG_FATFS_LFN_NONE=y (8.3 obligatoire) :
+# ce n'est PLUS le cas ici.
+CONFIG_FATFS_LFN_HEAP=y
+CONFIG_FATFS_MAX_LFN=255
+CONFIG_FATFS_CODEPAGE_437=y
+
+# ZERO_BUFFER_PSRAM n'est PAS un symbole Kconfig : c'est un #define dans
+# components/gamebuino/include_lib/gb_config.h (un seul framebuffer en SRAM,
+# tout est redessine a chaque image, puis graphics_present()).

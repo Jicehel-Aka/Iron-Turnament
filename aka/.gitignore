@@ -1,0 +1,5 @@
+build/
+build-pc/
+*.o
+__pycache__/
+test/*.bin
