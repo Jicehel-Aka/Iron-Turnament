@@ -1,0 +1,59 @@
+name: AKA
+
+on:
+  push:
+    paths: ['aka/**', '.github/workflows/aka.yml']
+  pull_request:
+    paths: ['aka/**', '.github/workflows/aka.yml']
+
+defaults:
+  run:
+    working-directory: aka
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sh test/run_tests.sh
+
+  pc-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y libsdl2-dev xvfb
+      - run: cmake -S pc -B build-pc -DCMAKE_BUILD_TYPE=Release && cmake --build build-pc -j
+      - run: SDL_AUDIODRIVER=dummy xvfb-run -a ./build-pc/irontournament --autotest --data "$RUNNER_TEMP/at" --scale 2
+
+  pc-windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+        working-directory: aka
+    steps:
+      - uses: actions/checkout@v4
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          install: mingw-w64-x86_64-gcc mingw-w64-x86_64-cmake mingw-w64-x86_64-ninja mingw-w64-x86_64-SDL2
+      - run: cmake -S pc -B build-pc -G Ninja -DCMAKE_BUILD_TYPE=Release && cmake --build build-pc
+      - uses: actions/upload-artifact@v4
+        with:
+          name: IronTournament-PC-windows
+          path: aka/build-pc/irontournament.exe
+          if-no-files-found: error
+
+  firmware:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: espressif/esp-idf-ci-action@v1
+        with:
+          esp_idf_version: v5.4
+          target: esp32s3
+          path: aka
+      - uses: actions/upload-artifact@v4
+        with:
+          name: firmware
+          path: aka/build/irontournament.bin
