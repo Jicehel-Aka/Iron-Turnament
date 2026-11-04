@@ -8,7 +8,15 @@
 #error "IRON_ASSET_DIR doit pointer vers main/assets (cf. pc/CMakeLists.txt)"
 #endif
 
-asm(".pushsection .rodata\n"
+#ifdef _WIN32
+#define IRON_SEC_BEGIN ".section .rdata,\"dr\"\n"
+#define IRON_SEC_END   ".text\n"
+#else
+#define IRON_SEC_BEGIN ".pushsection .rodata\n"
+#define IRON_SEC_END   ".popsection\n"
+#endif
+
+asm(IRON_SEC_BEGIN
     ".balign 4\n"
     ".global _binary_title_bin_start\n_binary_title_bin_start:\n"
     ".incbin \"" IRON_ASSET_DIR "/title.bin\"\n"
@@ -18,4 +26,4 @@ asm(".pushsection .rodata\n"
     ".balign 4\n"
     ".global _binary_stages_bin_start\n_binary_stages_bin_start:\n"
     ".incbin \"" IRON_ASSET_DIR "/stages.bin\"\n"
-    ".popsection\n");
+    IRON_SEC_END);

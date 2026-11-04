@@ -17,6 +17,9 @@
 #include <cstring>
 #include <string>
 #include <sys/stat.h>
+#ifdef _WIN32
+#include <direct.h>
+#endif
 #include "pc_platform.h"
 #include "../main/shell/shell.h"
 #include "../main/shell/save.h"
