@@ -104,10 +104,17 @@ struct FighterDef {
     AiProfile   ai;
     SpecialDef  specials[3];
     FinisherDef finisher;
+    const char* super_name;                          // nom du SUPER (100 Ki), deja en MAJUSCULES
     Rgb         floor_main, floor_trim;              // sol procedural du decor
 };
 
 const FighterDef& def(FighterId id);
+
+// Coefficients d'equilibrage des degats infliges (1.0 = neutre), regles par la simulation IA contre IA
+// (test/balance.cpp --tune). Le joueur humain utilise toujours la ligne Maitre (reference) ; un combattant
+// pilote par l'IA utilise la ligne de son niveau (cf. set_ai_level) : a chaque niveau, les six combattants
+// ont ainsi des chances egales face a l'IA du meme niveau.
+extern float g_dmg_scale[3][FIGHTER_COUNT];   // [niveau Novice/Arcade/Maitre][combattant]
 
 // Echelle du mode Tournoi : 3 adversaires, le rival jure, puis Malakor (boss).
 // Ecrit 5 identifiants dans `out`.
@@ -117,6 +124,14 @@ void build_ladder(FighterId player, FighterId out[5]);
 // Etat d'un match
 // -----------------------------------------------------------------------------
 enum Difficulty : uint8_t { DIFF_NOVICE = 0, DIFF_ARCADE = 1, DIFF_MASTER = 2 };
+
+// Regles du Ki : la jauge se remplit en frappant (+14), en encaissant (+8) et en gardant (+4 / +6 pour
+// l'attaquant). Elle est CONSERVEE d'une manche a l'autre et se depense ainsi :
+//   - EX    (50 Ki) : special + C maintenu avec A ou B -> degats x1.4, depart plus vif, invulnerable au depart ;
+//   - CANCEL (50 Ki) : un EX annule la fin d'un special qui a touche ou ete garde ;
+//   - SUPER (100 Ki) : bas + C -> charge imblocable, un coup unique par combattant.
+constexpr int KI_MAX = 100, KI_EX_COST = 50, KI_SUPER_COST = 100;
+constexpr int SUPER_STARTUP = 16, SUPER_ACTIVE = 8, SUPER_RECOVERY = 30;   // images logiques du SUPER
 
 struct Input {
     bool left = false, right = false, up = false, down = false;
@@ -134,7 +149,8 @@ struct Fighter {
     int8_t    facing;             // +1 droite, -1 gauche
     int16_t   hp, max_hp;
     float     display_hp;         // barre rouge residuelle
-    uint8_t   ki;
+    uint8_t   ki;                 // jauge de Ki 0..KI_MAX (cf. regles du Ki ci-dessous)
+    uint8_t   power;              // puissance du special en cours : 0 normal, 1 EX (50 Ki), 2 SUPER (100 Ki)
     Action    action;
     int16_t   action_frame, action_total;
     bool      hit_confirmed;
@@ -145,6 +161,7 @@ struct Fighter {
     DirEntry  hist[16];
     uint8_t   hist_len;
     int16_t   ai_cooldown;
+    float     dmg_scale;          // coefficient d'equilibrage des degats infliges (cf. g_dmg_scale)
     float     walk_dist;          // distance cumulee a la marche : pilote le cycle de pas (pas de glissement)
 };
 
@@ -190,14 +207,16 @@ enum BannerId : uint8_t {
     BN_HONOR,           // SCEAU D'HONNEUR ! / nom du coup de `arg`
     BN_KO,              // K.O. ! / `arg` remporte la manche
     BN_PERFECT,         // PARFAIT ! / `arg` remporte la manche
-    BN_TIME             // TEMPS ECOULE ! / `arg` l'emporte aux points
+    BN_TIME,            // TEMPS ECOULE ! / `arg` l'emporte aux points
+    BN_SUPER,           // nom du SUPER de `arg`
+    BN_EX               // EX ! / nom du special de `arg`
 };
 
 // Evenements sonores de la derniere image (OR de bits) ; la vue les consomme.
 enum SfxBit : uint16_t {
     SFX_WHIFF = 1, SFX_LIGHT = 2, SFX_HEAVY = 4, SFX_BLOCK = 8, SFX_SPECIAL = 16,
     SFX_THROW = 32, SFX_JUMP = 64, SFX_KO = 128, SFX_FINISH_STING = 256,
-    SFX_FINISHER = 512, SFX_BELL = 1024, SFX_VICTORY = 2048, SFX_TELEPORT = 4096
+    SFX_FINISHER = 512, SFX_BELL = 1024, SFX_VICTORY = 2048, SFX_TELEPORT = 4096, SFX_SUPER = 8192
 };
 
 constexpr int MAX_PROJ = 8;
@@ -242,6 +261,8 @@ struct MatchRules {
 void init_match(Match& m, FighterId p1, FighterId p2, bool boss_match, uint32_t seed,
                 const MatchRules& rules = MatchRules());
 void start_next_round(Match& m);
+// Applique le coefficient du niveau `diff` au combattant de P2 (pilote par l'IA).
+void set_ai_level(Match& m, Difficulty diff);
 
 // UNE image logique a 60 Hz. `p1_in` : entrees du joueur. P2 est pilote par l'IA.
 void step_match(Match& m, const Input& p1_in, Difficulty diff);

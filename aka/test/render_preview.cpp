@@ -76,6 +76,9 @@ int main(int argc,char**argv){
     // ecran de selection
     graphics_fill_rect_raw(0,0,320,240,0); draw_select(TITAN,1000,"CHOIX"); char path[256]; snprintf(path,sizeof path,"%s/sel.ppm",dir); dump(path);
     // bandeau
+    { Match m; init_match(m,KENJI,KROWEN,false,3); m.phase=PH_FIGHT; m.banner=BN_SUPER; m.banner_arg=KENJI; m.banner_timer=100;
+      m.f[0].ki=100; m.f[1].ki=62; m.f[0].power=2; m.f[0].action=A_SPECIAL_1; m.f[0].action_frame=18; m.f[0].action_total=54;
+      graphics_fill_rect_raw(0,0,320,240,0); draw_match(m,0); snprintf(path,sizeof path,"%s/ki.ppm",dir); dump(path); }
     { Match m; init_match(m,KENJI,KROWEN,false,3); m.phase=PH_FIGHT; m.banner=BN_FINISH_HIM; m.banner_arg=KENJI; m.banner_timer=100; m.f[1].action=A_DIZZY;
       graphics_fill_rect_raw(0,0,320,240,0); draw_match(m,0); snprintf(path,sizeof path,"%s/ban.ppm",dir); dump(path); }
     return 0;

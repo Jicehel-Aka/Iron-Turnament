@@ -27,6 +27,7 @@
 #include "../tasks/task_system.h"
 #include "../games/fight/fight.h"
 #include "../games/fight/fight_view.h"
+#include "../games/fight/netplay.h"
 #include <stdio.h>
 #include <string.h>
 
@@ -38,7 +39,8 @@ using namespace core;
 
 enum class State : uint8_t {
     Title, Menu, Options, SelectP1, SelectP2, Versus, Playing, InGameMenu,
-    Rules, Controls, GameOver, ConfirmQuit, ConfirmAbandon
+    Rules, Controls, GameOver, ConfirmQuit, ConfirmAbandon,
+    NetMenu, NetSelect, NetWait, NetError
 };
 
 enum class Mode : uint8_t { Tournament, Duel };
@@ -60,6 +62,14 @@ static fight::FighterId s_player = fight::KENJI;
 static fight::FighterId s_foe = fight::KROWEN;
 static fight::FighterId s_ladder[5];
 static int  s_bout = 0;
+
+// Reseau (2 joueurs) : liaison choisie, role, et erreur a afficher
+static bool s_net = false;               // la partie en cours est une partie reseau
+static uint8_t s_net_kind = 0;           // 0 = cable USB, 1 = Wi-Fi
+static bool s_net_host = false;
+static int  s_net_code = 0;              // fight::net::NetError
+static char s_net_tech[80] = "";         // detail technique (message anglais du systeme), affiche en petit
+static bool s_net_open_failed = false;
 
 // Appui LONG sur MENU = capture d'ecran. Appui court = menu. On ne peut donc pas
 // agir au FRONT MONTANT : il faut attendre le relachement pour savoir lequel c'etait.
@@ -97,7 +107,7 @@ static bool menu_nav(int& idx, int n) {
     return false;
 }
 
-static void go_menu() { audio_play_tune(Tune::Title); s_sel = 0; s_state = State::Menu; }
+static void go_menu() { net_close(); s_net = false; audio_play_tune(Tune::Title); s_sel = 0; s_state = State::Menu; }
 
 // -----------------------------------------------------------------------------
 // Combat
@@ -130,13 +140,14 @@ static void begin_match() {
 // -----------------------------------------------------------------------------
 // Menu principal
 // -----------------------------------------------------------------------------
-enum MenuItem { MI_TOURNAMENT = 0, MI_DUEL, MI_RULES, MI_CONTROLS, MI_OPTIONS, MI_QUIT, MI_COUNT };
+enum MenuItem { MI_TOURNAMENT = 0, MI_DUEL, MI_NETWORK, MI_RULES, MI_CONTROLS, MI_OPTIONS, MI_QUIT, MI_COUNT };
 
 static void update_menu() {
     if (menu_nav(s_sel, MI_COUNT)) {
         switch (s_sel) {
             case MI_TOURNAMENT: s_mode = Mode::Tournament; s_pick = (fight::FighterId)s_cfg.fighter; s_state = State::SelectP1; break;
             case MI_DUEL:       s_mode = Mode::Duel;       s_pick = (fight::FighterId)s_cfg.fighter; s_state = State::SelectP1; break;
+            case MI_NETWORK:    s_sel = 0; s_state = State::NetMenu; break;
             case MI_RULES:      s_scroll = 0; s_text_back = State::Menu; s_state = State::Rules;    break;
             case MI_CONTROLS:   s_scroll = 0; s_text_back = State::Menu; s_state = State::Controls; break;
             case MI_OPTIONS:    s_sel = 0; s_state = State::Options; break;
@@ -148,7 +159,7 @@ static void update_menu() {
 
 static void draw_menu_screen() {
     ui::Menu m { i18n::T(i18n::STR_TITLE),
-        { i18n::T(i18n::STR_MODE_TOURNAMENT), i18n::T(i18n::STR_MODE_DUEL),
+        { i18n::T(i18n::STR_MODE_TOURNAMENT), i18n::T(i18n::STR_MODE_DUEL), i18n::T(i18n::STR_NETWORK),
           i18n::T(i18n::STR_RULES), i18n::T(i18n::STR_CONTROLS),
           i18n::T(i18n::STR_OPTIONS), i18n::T(i18n::STR_QUIT) }, MI_COUNT };
     ui::draw_menu(m, s_sel);
@@ -330,9 +341,96 @@ static void update_text(int n) {
 }
 
 // -----------------------------------------------------------------------------
+// Reseau 2 joueurs
+// -----------------------------------------------------------------------------
+static const i18n::StrId kNetItems[4] = { i18n::STR_NET_HOST_USB, i18n::STR_NET_JOIN_USB, i18n::STR_NET_HOST_WIFI, i18n::STR_NET_JOIN_WIFI };
+
+static const char* net_error_text() {
+    using namespace i18n;
+    if (s_net_open_failed) return T(STR_NET_ERR_OPEN);
+    switch (s_net_code) {
+        case fight::net::NE_TIMEOUT:   return T(STR_NET_ERR_TIMEOUT);
+        case fight::net::NE_VERSION:   return T(STR_NET_ERR_VERSION);
+        case fight::net::NE_DESYNC:    return T(STR_NET_ERR_DESYNC);
+        case fight::net::NE_PEER_LEFT: return T(STR_NET_ERR_LEFT);
+        default:                       return T(STR_NET_ERR_LINK);
+    }
+}
+
+static void net_fail(bool open_failed) {
+    s_net_open_failed = open_failed;
+    s_net_code = net_error();
+    net_close();
+    s_net = false;
+    sfx_illegal();
+    s_sel = 0;
+    s_state = State::NetError;
+}
+
+static void update_net_menu() {
+    if (menu_nav(s_sel, 5)) {
+        if (s_sel == 4) { s_sel = MI_NETWORK; s_state = State::Menu; return; }
+        s_net_kind = (uint8_t)(s_sel / 2);
+        s_net_host = (s_sel % 2) == 0;
+        s_pick = (fight::FighterId)s_cfg.fighter;
+        s_state = State::NetSelect;
+    }
+    if (input_was_pressed(Button::B)) { sfx_menu_back(); s_sel = MI_NETWORK; s_state = State::Menu; }
+}
+
+static void update_net_select() {
+    const int dir = (input_repeat(Button::Right) ? 1 : 0) - (input_repeat(Button::Left) ? 1 : 0);
+    if (dir) { s_pick = (fight::FighterId)(((int)s_pick + fight::FIGHTER_COUNT + dir) % fight::FIGHTER_COUNT); sfx_cursor(); }
+    if (input_was_pressed(Button::A)) {
+        sfx_menu_ok();
+        s_player = s_pick;
+        s_cfg.fighter = (uint8_t)s_pick;
+        save::save(s_cfg);
+        s_mode = Mode::Duel;
+        MatchSetup rules{};
+        rules.rounds_to_win = s_cfg.rounds;                              // l'hote impose ses regles
+        rules.round_sec = s_cfg.time_idx >= 3 ? 0 : kTimes[s_cfg.time_idx];
+        s_net_tech[0] = 0;
+        if (net_open(s_net_kind, s_net_host, (uint8_t)s_player, rules, s_net_tech, sizeof s_net_tech)) s_state = State::NetWait;
+        else net_fail(true);
+    }
+    if (input_was_pressed(Button::B)) { sfx_menu_back(); s_sel = 0; s_state = State::NetMenu; }
+}
+
+static void update_net_wait() {
+    const int r = net_poll(s_now);
+    if (r > 0) {
+        net_begin_match();
+        s_net = true;
+        audio_play_tune(Tune::Game);
+        s_state = State::Playing;
+    } else if (r < 0) {
+        net_fail(false);
+    } else if (input_was_pressed(Button::B)) {
+        sfx_menu_back(); net_close(); s_sel = 0; s_state = State::NetMenu;
+    }
+}
+
+static void draw_net_wait() {
+    graphics_fill_rect_raw(0, 0, ui::SCR_W, ui::SCR_H, ui::C_BG);
+    graphics_fill_rect_raw(0, 0, ui::SCR_W, ui::TOP_H, ui::C_BAR);
+    graphics_draw_text_center_raw(5, i18n::T(i18n::STR_NETWORK), ui::C_ACCENT);
+    const fight::FighterDef& a = fight::def(s_player);
+    auto col = [](fight::Rgb c) { return graphics_make_color(c.r, c.g, c.b); };
+    graphics_fill_rect_raw(110, 50, 100, 100, col(a.accent));
+    graphics_draw_bitmap565_scaled(114, 54, 92, 92, fight::portrait(s_player), 64, 64, false);
+    graphics_draw_text_center_raw(158, a.short_name, ui::C_TEXT);
+    const bool dots = ((s_now / 400) & 3) != 0;
+    graphics_draw_text_center_raw(180, i18n::T(s_net_host ? i18n::STR_NET_WAIT_HOST : i18n::STR_NET_WAIT_JOIN), dots ? ui::C_TEXT : ui::C_DIM);
+    graphics_draw_text_center_raw(196, net_detail(), ui::C_DIM);
+    ui::bottom_bar(nullptr, true);
+}
+
+// -----------------------------------------------------------------------------
 // En combat
 // -----------------------------------------------------------------------------
 static void update_playing() {
+    if (s_net && net_match_state() < 0) { net_fail(false); return; }
     const Outcome o = s_game->outcome();
     if (o == OUT_ONGOING) { s_game->update(s_now); return; }
 
@@ -389,9 +487,19 @@ void update(uint32_t now) {
         case State::Versus:   update_versus(); break;
         case State::Rules:    update_text(i18n::rules_lines(i18n::GAME_FIGHT)); break;
         case State::Controls: update_text(controls_total()); break;
+        case State::NetMenu:   update_net_menu(); break;
+        case State::NetSelect: update_net_select(); break;
+        case State::NetWait:   update_net_wait(); break;
+        case State::NetError:
+            if (input_was_pressed(Button::A) || input_was_pressed(Button::B)) { sfx_menu_back(); s_sel = 0; s_state = State::NetMenu; }
+            break;
 
         case State::Playing:
-            if (menu_short) { sfx_menu_ok(); s_sel = 0; s_state = State::InGameMenu; }
+            if (menu_short) {
+                // Pas de pause en reseau (l'adversaire attendrait) : MENU quitte la partie.
+                if (s_net) { sfx_menu_back(); go_menu(); }
+                else { sfx_menu_ok(); s_sel = 0; s_state = State::InGameMenu; }
+            }
             else update_playing();
             break;
 
@@ -450,6 +558,12 @@ void draw() {
         case State::Versus:
             draw_versus();
             return;
+        case State::NetSelect:
+            fight::draw_select(s_pick, s_now, i18n::T(i18n::STR_CHOOSE_YOU));
+            return;
+        case State::NetWait:
+            draw_net_wait();
+            return;
         default: break;
     }
 
@@ -483,9 +597,23 @@ void draw() {
             ui::draw_menu(m, s_sel);
             break;
         }
+        case State::NetMenu: {
+            const ui::Menu m { i18n::T(i18n::STR_NETWORK),
+                { i18n::T(kNetItems[0]), i18n::T(kNetItems[1]), i18n::T(kNetItems[2]), i18n::T(kNetItems[3]),
+                  i18n::T(i18n::STR_BACK) }, 5 };
+            ui::draw_menu(m, s_sel);
+            ui::bottom_bar(nullptr, true);
+            break;
+        }
+        case State::NetError: {
+            const ui::Menu m { net_error_text(), { i18n::T(i18n::STR_BACK) }, 1 };
+            ui::draw_menu(m, 0);
+            if (s_net_tech[0]) graphics_draw_text_center_raw(ui::SCR_H - 40, s_net_tech, ui::C_DIM);
+            break;
+        }
         case State::GameOver: {
             const Outcome o = s_game->outcome();
-            const char* t = o == OUT_WIN ? (s_mode == Mode::Tournament ? i18n::T(i18n::STR_CHAMPION)
+            const char* t = o == OUT_WIN ? (!s_net && s_mode == Mode::Tournament ? i18n::T(i18n::STR_CHAMPION)
                                                                        : i18n::T(i18n::STR_YOU_WIN))
                                          : i18n::T(i18n::STR_YOU_LOSE);
             const ui::Menu m { t, { i18n::T(i18n::STR_BACK) }, 1 };

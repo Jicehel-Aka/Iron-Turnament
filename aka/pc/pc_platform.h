@@ -21,3 +21,8 @@ void pc_input_feed(const bool* held);         // etat des touches (indexe par Bu
 // pc_audio.cpp
 void pc_audio_open();
 void pc_audio_close();
+
+// pc_net.cpp : reglages de la liaison reseau (aussi lus dans net.txt du dossier du jeu)
+void pc_net_set_serial(const char* port);     // COM5, /dev/ttyACM0
+void pc_net_set_peer(const char* ip);         // invite Wi-Fi : IP de l'hote (vide = recherche automatique)
+void pc_net_set_port(int port);

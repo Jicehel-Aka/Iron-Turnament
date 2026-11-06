@@ -35,7 +35,11 @@ Input ai_decide(Match& m, Fighter& ai, const Fighter& opp, Difficulty diff) {
 
     auto toward = [&]() { if (toward_left) in.left = true; else in.right = true; };
     auto away   = [&]() { if (toward_left) in.right = true; else in.left = true; };
-    auto special = [&]() { in.special = true; in.jp_special = true; };
+    // Special : avec assez de Ki (mais pas pleine jauge, reservee au SUPER), l'IA le renforce parfois (EX).
+    auto special = [&]() {
+        in.special = true; in.jp_special = true;
+        if (ai.ki >= KI_EX_COST && ai.ki < KI_MAX && rnd(m) < 0.40f * diff_scale) in.a = true;
+    };
 
     // --- 1. Fenêtre « ACHEVEZ-LE ! » -----------------------------------------
     if (m.phase == PH_FINISH_HIM && opp.action == A_DIZZY) {
@@ -60,6 +64,12 @@ Input ai_decide(Match& m, Fighter& ai, const Fighter& opp, Difficulty diff) {
         const Projectile& p = m.proj[i];
         if (p.alive && p.owner != ai.slot && std::fabs(p.x - ai.x) < 95.0f &&
             sgn(p.vx) == sgn(ai.x - p.x)) { incoming = &p; break; }
+    }
+
+    // --- 1b. SUPER : jauge pleine, adversaire a portee et au sol -> charge imblocable.
+    if (ai.ki >= KI_SUPER_COST && m.phase == PH_FIGHT && dist >= 34.0f && dist <= 120.0f &&
+        opp.y > -30 && m.frame % react == 0 && rnd(m) < 0.55f * diff_scale) {
+        in.down = true; special(); in.a = false; return in;
     }
 
     // --- 2. Réactions face aux projectiles ------------------------------------

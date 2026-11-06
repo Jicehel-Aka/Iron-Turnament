@@ -225,7 +225,9 @@ static Pose compute_pose(const Fighter& f, const FighterDef& d, int now_frame) {
     }
     case ACTION_COUNT: break;
     case A_SPECIAL_1: case A_SPECIAL_2: case A_SPECIAL_3: {
-        const SpecialDef& sp = d.specials[f.action - A_SPECIAL_1];
+        const SpecialDef sp = f.power == 2
+            ? SpecialDef{ "", MO_QCF, SC_FWD, 0, 0, SUPER_STARTUP, SUPER_ACTIVE, SUPER_RECOVERY, SP_DASH_STRIKE }
+            : d.specials[f.action - A_SPECIAL_1];
         const float su = (float)sp.startup, ac = (float)sp.active;
         const float e = ramp(t, 0, su) * (1.0f - ramp(t, su + ac, T));
         switch (sp.type) {
@@ -657,6 +659,21 @@ static void draw_bar(int x, int y, int w, int h, const Fighter& f, bool right_to
     }
 }
 
+// Jauge de Ki : bleue, doree des 50 (EX disponible), clignotante a 100 (SUPER pret).
+static void draw_ki(int x, int y, int w, const Fighter& f, bool right_to_left) {
+    const int h = 3;
+    graphics_fill_rect_raw(x - 1, y - 1, w + 2, h + 2, graphics_make_color(10, 8, 14));
+    graphics_fill_rect_raw(x, y, w, h, graphics_make_color(24, 28, 52));
+    const int kw = w * f.ki / KI_MAX;
+    const bool full = f.ki >= KI_MAX;
+    const bool ex   = f.ki >= KI_EX_COST;
+    const uint16_t c = full ? ((f.action_frame / 4) & 1 ? graphics_make_color(255, 255, 255) : graphics_make_color(250, 204, 21))
+                     : ex   ? graphics_make_color(250, 204, 21)
+                            : graphics_make_color(56, 140, 230);
+    graphics_fill_rect_raw(right_to_left ? x + w - kw : x, y, kw, h, c);
+    graphics_fill_rect_raw(x + w / 2, y, 1, h, graphics_make_color(10, 8, 14));   // repere des 50
+}
+
 static void draw_win_pips(int x, int y, int wins, int rounds, bool right_to_left) {
     for (int i = 0; i < rounds; ++i) {
         const int px = right_to_left ? x - i * 10 : x + i * 10;
@@ -683,6 +700,8 @@ static const char* banner_main(const Match& m, char* buf, size_t n) {
     case BN_KO:          return T(STR_KO);
     case BN_PERFECT:     return T(STR_PERFECT);
     case BN_TIME:        return T(STR_TIME_OVER);
+    case BN_SUPER:       return def((FighterId)m.banner_arg).super_name;
+    case BN_EX:          return "EX";
     default:             return "";
     }
 }
@@ -728,6 +747,9 @@ static void draw_hud(const Match& m) {
     draw_bar(34, 7, 100, 9, a, false, da.accent);
     draw_bar(SCR_W - 34 - 100, 7, 100, 9, b, true, db.accent);
 
+    draw_ki(34, 18, 100, a, false);
+    draw_ki(SCR_W - 34 - 100, 18, 100, b, true);
+
     graphics_draw_text_raw(34, 21, da.short_name, ui::C_TEXT);
     graphics_draw_text_raw(SCR_W - 34 - graphics_text_width(db.short_name), 21, db.short_name, ui::C_TEXT);
     draw_win_pips(34 + graphics_text_width(da.short_name) + 10, 25, m.wins[0], m.rounds_to_win, false);
@@ -752,6 +774,7 @@ static void draw_banner(const Match& m) {
     const bool fatal = m.banner == BN_FINISH_HIM || m.banner == BN_FATALITY;
     const uint16_t fg = fatal ? graphics_make_color(255, 70, 90)
                       : m.banner == BN_FIGHT ? graphics_make_color(52, 211, 153)
+                      : (m.banner == BN_SUPER || m.banner == BN_EX) ? graphics_make_color(250, 204, 21)
                       : (m.banner == BN_COUNTER || m.banner == BN_PULL) ? graphics_make_color(56, 189, 248)
                       : ui::C_ACCENT;
     const int y = 78;
@@ -873,6 +896,7 @@ void draw_select(FighterId sel, uint32_t now_ms, const char* title) {
 void play_sfx(uint16_t b) {
     // Un seul effet par image : on garde le plus important (ordre décroissant).
     if (b & SFX_FINISHER)      { sfx_multi_capture(); return; }
+    if (b & SFX_SUPER)         { sfx_multi_capture(); return; }
     if (b & SFX_KO)            { sfx_gameover();      return; }
     if (b & SFX_FINISH_STING)  { sfx_promote();       return; }
     if (b & SFX_HEAVY)         { sfx_capture();       return; }

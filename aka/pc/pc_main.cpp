@@ -8,6 +8,9 @@
   Options :   --scale 1|2|3     taille de la fenetre (x1 = 320x240) ; defaut = reglage sauvegarde
               --fullscreen      plein ecran
               --data DIR        dossier du jeu (config.dat, captures, sprites/)
+              --serial PORT     port serie du cable USB vers la console (COM5, /dev/ttyACM0)
+              --peer IP         invite Wi-Fi : adresse de l'hote (defaut : recherche automatique)
+              --port N          port UDP (defaut 7777)
   Le zoom se change aussi dans Options, et F11 bascule en plein ecran.
 ===============================================================================
 */
@@ -23,6 +26,7 @@
 #include "pc_platform.h"
 #include "../main/shell/shell.h"
 #include "../main/shell/save.h"
+#include "../main/shell/game_module.h"
 #include "../main/core/graphics.h"
 #include "../main/core/input.h"
 #include "../main/core/audio.h"
@@ -118,19 +122,53 @@ static const ScriptedPress AUTOTEST[] = {
 static const int AUTOTEST_SHOTS[] = { 5, 15, 25, 40, 100, 153, 172, 183, 218 };
 static const int AUTOTEST_END = 260;
 
+// --- test reseau scripte : --autotest-net host|guest ---------------------------------------------------------
+// Deux instances (une « host », une « guest ») naviguent jusqu'a Reseau > Wi-Fi, se trouvent par diffusion, puis se
+// battent avec des entrees pseudo-aleatoires ; chacune affiche a la fin NETTEST sim=... state=... err=...
+static void net_autotest_inputs(bool host, int frame, bool* held) {
+    for (int i = 0; i < (int)core::Button::COUNT; ++i) held[i] = false;
+    auto press = [&](int a, int b, core::Button k) { if (frame >= a && frame <= b) held[(int)k] = true; };
+    press(10, 12, core::Button::A);                                   // titre -> menu
+    press(20, 21, core::Button::Down); press(24, 25, core::Button::Down);
+    press(28, 30, core::Button::A);                                   // Reseau
+    press(34, 35, core::Button::Down); press(38, 39, core::Button::Down);
+    if (!host) press(42, 43, core::Button::Down);                     // 4e entree = invite Wi-Fi
+    press(46, 48, core::Button::A);
+    if (!host) press(52, 53, core::Button::Right);                    // un combattant different
+    press(60, 62, core::Button::A);                                   // valide : attend l'adversaire
+    if (frame > 200) {                                                // en combat : entrees pseudo-aleatoires
+        static uint32_t r = 12345;
+        static int hold = 0; static bool st[7];
+        if (hold-- <= 0) {
+            hold = 4 + (int)(r % 5);
+            r ^= r << 13; r ^= r >> 17; r ^= r << 5; if (!host) r += 77;
+            st[0] = (r & 3) == 0; st[1] = (r & 3) == 1; st[2] = ((r >> 3) & 15) == 0; st[3] = ((r >> 7) & 7) == 0;
+            st[4] = ((r >> 10) & 3) == 0; st[5] = ((r >> 12) & 3) == 0; st[6] = ((r >> 14) & 7) == 0;
+        }
+        held[(int)core::Button::Left] = st[0]; held[(int)core::Button::Right] = st[1]; held[(int)core::Button::Up] = st[2];
+        held[(int)core::Button::Down] = st[3]; held[(int)core::Button::A] = st[4]; held[(int)core::Button::B] = st[5];
+        held[(int)core::Button::C] = st[6];
+    }
+}
+
 static bool dir_exists(const std::string& p) { struct stat st; return stat(p.c_str(), &st) == 0; }
 
 int main(int argc, char** argv) {
     int cli_zoom = 0;
     bool autotest = false;
+    int net_test = 0;                                // 1 = hote, 2 = invite
     std::string data_dir;
     for (int i = 1; i < argc; ++i) {
         if (!std::strcmp(argv[i], "--scale") && i + 1 < argc) cli_zoom = std::atoi(argv[++i]);
         else if (!std::strcmp(argv[i], "--fullscreen")) cli_zoom = 4;
         else if (!std::strcmp(argv[i], "--data") && i + 1 < argc) data_dir = argv[++i];
         else if (!std::strcmp(argv[i], "--autotest")) autotest = true;
+        else if (!std::strcmp(argv[i], "--autotest-net") && i + 1 < argc) net_test = !std::strcmp(argv[++i], "host") ? 1 : 2;
+        else if (!std::strcmp(argv[i], "--serial") && i + 1 < argc) pc_net_set_serial(argv[++i]);
+        else if (!std::strcmp(argv[i], "--peer") && i + 1 < argc) pc_net_set_peer(argv[++i]);
+        else if (!std::strcmp(argv[i], "--port") && i + 1 < argc) pc_net_set_port(std::atoi(argv[++i]));
         else {
-            std::printf("Iron Tournament (PC)\nUsage : %s [--scale 1|2|3] [--fullscreen] [--data DOSSIER]\n", argv[0]);
+            std::printf("Iron Tournament (PC)\nUsage : %s [--scale 1|2|3] [--fullscreen] [--data DOSSIER]\n        [--serial PORT] [--peer IP] [--port N]   (mode reseau, cf. net.txt)\n", argv[0]);
             return std::strcmp(argv[i], "--help") == 0 ? 0 : 1;
         }
     }
@@ -197,6 +235,17 @@ int main(int argc, char** argv) {
             for (const ScriptedPress& p : AUTOTEST) if (frame >= p.from && frame <= p.to) held[(int)p.b] = true;
             for (int sh : AUTOTEST_SHOTS) if (frame == sh) core::graphics_save_screenshot_bmp();
             if (++frame >= AUTOTEST_END) g_quit = true;
+        }
+        if (net_test) {
+            static int nframe = 0;
+            net_autotest_inputs(net_test == 1, nframe, held);
+            if (nframe == 400 || nframe == 700) core::graphics_save_screenshot_bmp();
+            if (++nframe >= 1500) {
+                std::printf("NETTEST %s sim=%u active=%d state=%d err=%d\n", net_test == 1 ? "host" : "guest",
+                            shell::net_sim_tick(), shell::net_active() ? 1 : 0, shell::net_match_state(), shell::net_error());
+                std::fflush(stdout);
+                g_quit = true;
+            }
         }
         core::pc_input_feed(held);
         core::input_poll(now);
