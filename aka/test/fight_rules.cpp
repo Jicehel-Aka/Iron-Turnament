@@ -310,11 +310,55 @@ static void test_boss_boost() {
     CHECK(m.banner == BN_ROUND_BOSS);
 }
 
+static void test_options_and_physics() {
+    std::printf("[options + coherence physique]\n");
+    // Manches a gagner : 1 -> un seul KO decide du match, 3 -> la fenetre ACHEVEZ-LE n'apparait qu'a la 3e.
+    for (int rtw = 1; rtw <= 3; ++rtw) {
+        Match m; MatchRules r; r.rounds_to_win = (uint8_t)rtw;
+        init_match(m, KENJI, TITAN, false, 7, r);
+        to_fight(m);
+        m.f[0].x = 300; m.f[1].x = 330;
+        CHECK(m.rounds_to_win == rtw);
+        m.wins[0] = (uint8_t)(rtw - 1);                 // un round de la victoire
+        m.f[1].hp = 1;
+        Input p1; p1.right = false; p1.jp_a = true; p1.a = true;
+        for (int i = 0; i < 40 && m.phase == PH_FIGHT; ++i) { st(m, p1); p1.jp_a = false; }
+        CHECK(m.phase == PH_FINISH_HIM || m.phase == PH_ROUND_END || m.phase == PH_KO_SLOWMO);
+        if (rtw > 1) CHECK(m.wins[0] <= rtw);
+    }
+    // Duree : 30 s -> 1800 images ; 0 -> illimitee (le chrono ne descend jamais, pas de fin aux points).
+    { Match m; MatchRules r; r.round_sec = 30; init_match(m, KENJI, TITAN, false, 3, r);
+      CHECK(m.timer_frames == 30 * 60); }
+    { Match m; MatchRules r; r.round_sec = 0; init_match(m, KENJI, TITAN, false, 3, r);
+      to_fight(m); m.f[0].x = 120; m.f[1].x = 520;
+      const int t0 = m.timer_frames;
+      for (int i = 0; i < 3000; ++i) st(m, none());
+      CHECK(m.phase == PH_FIGHT);
+      CHECK(m.timer_frames == t0); }
+    // Marche : la distance cumulee suit exactement le deplacement (pilote le cycle de pas -> pas de glissement).
+    { Match m; setup(m, KENJI, TITAN, 220);
+      const float x0 = m.f[0].x;
+      Input fw; fw.right = true;
+      for (int i = 0; i < 40; ++i) st(m, fw);
+      CHECK(m.f[0].walk_dist > 40.0f);
+      CHECK(std::fabs(m.f[0].walk_dist - std::fabs(m.f[0].x - x0)) < 1.0f); }
+    // Projectile : sort a hauteur de main (pas a la ceinture).
+    { Match m; setup(m, KENJI, TITAN, 200);
+      Input q; q.down = true; st(m, q); st(m, q);
+      Input f; f.down = true; f.right = true; st(m, f);
+      Input go; go.right = true; go.a = true; go.b = true; go.special = true; go.jp_a = go.jp_b = go.jp_special = true;
+      for (int i = 0; i < 30; ++i) { st(m, go); go.jp_a = go.jp_b = go.jp_special = false; }
+      bool seen = false;
+      for (const Projectile& p : m.proj) if (p.alive) { seen = true; CHECK(p.y <= -36.0f && p.y >= -50.0f); }
+      CHECK(seen); }
+}
+
 int main() {
     test_ladder();
     test_shortcut_and_motions();
     test_blocking_and_chip();
     test_timeout();
+    test_options_and_physics();
     test_round_flow();
     test_boss_boost();
     test_determinism();

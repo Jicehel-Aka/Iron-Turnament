@@ -14,6 +14,8 @@
 
 namespace fight {
 
+static constexpr int UNLIMITED_FRAMES = 999999;   // chrono d'une manche sans limite de temps
+
 static constexpr float FLOOR_Y = 0.0f;
 
 // -----------------------------------------------------------------------------
@@ -76,11 +78,14 @@ static void create_fighter(Fighter& f, FighterId id, uint8_t slot, bool boss) {
     f.ai_cooldown = 18;
 }
 
-void init_match(Match& m, FighterId p1, FighterId p2, bool boss_match, uint32_t seed) {
+void init_match(Match& m, FighterId p1, FighterId p2, bool boss_match, uint32_t seed,
+                const MatchRules& rules) {
     std::memset(&m, 0, sizeof m);
     m.rng = seed ? seed : 1u;
     m.round = 1;
-    m.timer_frames = ROUND_SEC * 60;
+    m.rounds_to_win = rules.rounds_to_win < 1 ? 1 : (rules.rounds_to_win > 3 ? 3 : rules.rounds_to_win);
+    m.round_sec = rules.round_sec;
+    m.timer_frames = m.round_sec == 0 ? UNLIMITED_FRAMES : m.round_sec * 60;
     m.phase = PH_INTRO;
     m.phase_timer = 84;
     m.boss_match = boss_match;
@@ -96,11 +101,12 @@ void start_next_round(Match& m) {
     const FighterId i1 = m.f[0].id, i2 = m.f[1].id;
 
     m.round++;
-    m.timer_frames = ROUND_SEC * 60;
+    m.timer_frames = m.round_sec == 0 ? UNLIMITED_FRAMES : m.round_sec * 60;
     m.hitstop = 0; m.shake = 0; m.dark_flash = 0;
     m.phase = PH_INTRO;
     m.phase_timer = 80;
-    banner(m, m.round == 3 ? BN_ROUND_FINAL : BN_ROUND_NEXT, 0, 80);
+    const bool decisive = m.rounds_to_win > 1 && m.wins[0] == m.rounds_to_win - 1 && m.wins[1] == m.rounds_to_win - 1;
+    banner(m, decisive ? BN_ROUND_FINAL : BN_ROUND_NEXT, 0, 80);
     m.finisher_done = FIN_NONE;
     m.winner_slot = 0;
     std::memset(m.proj, 0, sizeof m.proj);
@@ -216,10 +222,12 @@ static bool can_act(const Fighter& f) {
            f.action == A_WALK_BACK || f.action == A_CROUCH;
 }
 
+
 static bool is_special(Action a) { return a == A_SPECIAL_1 || a == A_SPECIAL_2 || a == A_SPECIAL_3; }
 
 static void apply_physics(Fighter& f) {
     f.x += f.vx;
+    if (f.action == A_WALK_FWD || f.action == A_WALK_BACK) f.walk_dist += std::fabs(f.vx);
     f.y += f.vy;
 
     if (f.y < FLOOR_Y) f.vy += GRAVITY;
@@ -283,7 +291,7 @@ static void check_round_finish(Match& m, Fighter& attacker, Fighter& defender) {
     const int cur_wins = m.wins[attacker.slot - 1];
 
     // Manche décisive : fenêtre « ACHEVEZ-LE ! » à la Mortal Kombat.
-    if (cur_wins >= ROUNDS_TO_WIN - 1) {
+    if (cur_wins >= m.rounds_to_win - 1) {
         defender.hp = 1;
         defender.vx = 0; defender.vy = 0; defender.y = 0;
         start_action(defender, A_DIZZY, 270);
@@ -384,6 +392,19 @@ static void resolve_strike(Match& m, Fighter& atk, Fighter& dfn, int base, int c
 // -----------------------------------------------------------------------------
 // Projectiles & spéciaux
 // -----------------------------------------------------------------------------
+// Hauteur (px au-dessus du sol) de la main qui lance le projectile, mesuree sur l'image de tir de
+// chaque planche (ancien reglage unique : 26 px = la ceinture, bien trop bas).
+static float launch_height(FighterId id, SpecialType t) {
+    switch (id) {
+    case KENJI:   return 42.0f;                       // Onde Celeste : paumes au plexus/poitrine
+    case KROWEN:  return 41.0f;                       // Harpon
+    case MEILIN:  return 41.0f;                       // Eventail, main tendue
+    case NYXIA:   return t == SP_TRAP_ORB ? 40.0f : 46.0f;   // lance : poing leve a hauteur d'epaule
+    case MALAKOR: return 40.0f;                       // Egide Noire
+    default:      return 38.0f;
+    }
+}
+
 static void spawn_projectile(Match& m, Fighter& f, const SpecialDef& sp) {
     const FighterDef& d = def(f.id);
     const int dir = f.facing;
@@ -416,7 +437,7 @@ static void spawn_projectile(Match& m, Fighter& f, const SpecialDef& sp) {
         p.fighter = f.id;
         p.kind = kind;
         p.x = f.x + dir * 24.0f;
-        p.y = f.y - 26.0f;
+        p.y = f.y - launch_height(f.id, sp.type);
         p.vx = vx; p.vy = 0;
         p.w = w; p.h = h;
         p.damage = sp.damage; p.chip = sp.chip;
@@ -981,9 +1002,11 @@ static void step_impl(Match& m, const Input& p1_in, const Input* p2_given, Diffi
         }
     }
 
-    // Chronomètre (99 s) : au temps écoulé, victoire au pourcentage de vitalité.
+    // Chronomètre : au temps écoulé, victoire au pourcentage de vitalité (round_sec == 0 : illimité).
     if (m.phase == PH_FIGHT) {
-        if (m.timer_frames > 0) {
+        if (m.round_sec == 0) {
+            // pas de limite de temps
+        } else if (m.timer_frames > 0) {
             m.timer_frames--;
         } else {
             const float r1 = (float)P1.hp / P1.max_hp;

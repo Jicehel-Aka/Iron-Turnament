@@ -49,7 +49,10 @@ static fight::Input read_input() {
 
 static void start(const MatchSetup& s) {
     s_diff = s.level == 0 ? fight::DIFF_NOVICE : s.level == 2 ? fight::DIFF_MASTER : fight::DIFF_ARCADE;
-    fight::init_match(s_m, (fight::FighterId)s.player, (fight::FighterId)s.foe, s.boss, esp_random());
+    fight::MatchRules rules;
+    rules.rounds_to_win = s.rounds_to_win ? s.rounds_to_win : fight::ROUNDS_TO_WIN;
+    rules.round_sec     = s.round_sec;
+    fight::init_match(s_m, (fight::FighterId)s.player, (fight::FighterId)s.foe, s.boss, esp_random(), rules);
     // Charge les sprites des deux combattants depuis la SD (~1 s). Echec = dessin vectoriel.
     fight::spr::load_pair((fight::FighterId)s.player, (fight::FighterId)s.foe);
     s_out = OUT_ONGOING;
@@ -75,8 +78,8 @@ static void update(uint32_t) {
             const int hold = s_m.finisher_done != fight::FIN_NONE ? 170 : 110;
             if (++s_end_steps >= hold) {
                 s_end_steps = 0;
-                if (s_m.wins[0] >= fight::ROUNDS_TO_WIN)      s_out = OUT_WIN;
-                else if (s_m.wins[1] >= fight::ROUNDS_TO_WIN) s_out = OUT_LOSS;
+                if (s_m.wins[0] >= s_m.rounds_to_win)      s_out = OUT_WIN;
+                else if (s_m.wins[1] >= s_m.rounds_to_win) s_out = OUT_LOSS;
                 else                                          fight::start_next_round(s_m);
             }
         } else {

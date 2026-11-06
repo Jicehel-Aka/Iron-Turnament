@@ -21,7 +21,7 @@ static const FighterDef DEFS[FIGHTER_COUNT] = {
     // ------------------------------------------------------------------ KENJI
     { "KENJI", 1000, 62, 60, 58, 60,
       2.25f, 1.85f, -7.9f,
-      {241,245,249}, {220, 38, 38}, {224,169,126}, { 56,189,248},
+      {205,211,219}, { 59,130,206}, {224,169,126}, { 56,189,248},
       KROWEN,
       { 76, 0.52f, 0.78f, 0.88f, 0.58f, 0.00f, 0.25f, 0.02f, 0.35f },
       {
@@ -53,7 +53,7 @@ static const FighterDef DEFS[FIGHTER_COUNT] = {
       MALAKOR,
       { 44, 0.86f, 0.42f, 0.65f, 0.48f, 0.00f, 0.30f, 0.04f, 0.65f },
       {
-        { "Eventail d'Acier",  MO_BF,  SC_FWD,   66, 12,  9, 16, 14, SP_PROJECTILE  },
+        { "Eventail d'Acier",  MO_BF,  SC_FWD,   66, 12, 14, 14, 11, SP_PROJECTILE  },
         { "Cent Eclairs",      MO_QCF, SC_BACK,  96, 22,  7, 22, 16, SP_DASH_STRIKE },
         { "Flèche du Phénix",  MO_DU,  SC_UP,    90, 16, 10, 18, 18, SP_OVERHEAD    },
       },
