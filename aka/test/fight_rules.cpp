@@ -342,6 +342,14 @@ static void test_options_and_physics() {
       for (int i = 0; i < 40; ++i) st(m, fw);
       CHECK(m.f[0].walk_dist > 40.0f);
       CHECK(std::fabs(m.f[0].walk_dist - std::fabs(m.f[0].x - x0)) < 1.0f); }
+    // Equilibrage : le joueur (P1) utilise la ligne Maitre ; set_ai_level change seulement le combattant de l'IA.
+    { Match m; init_match(m, KENJI, TITAN, false, 5);
+      CHECK(m.f[0].dmg_scale == g_dmg_scale[DIFF_MASTER][KENJI]);
+      set_ai_level(m, DIFF_NOVICE);
+      CHECK(m.f[1].dmg_scale == g_dmg_scale[DIFF_NOVICE][TITAN]);
+      CHECK(m.f[0].dmg_scale == g_dmg_scale[DIFF_MASTER][KENJI]);
+      for (int l = 0; l < 3; ++l) for (int f = 0; f < FIGHTER_COUNT; ++f)
+          CHECK(g_dmg_scale[l][f] >= 0.5f && g_dmg_scale[l][f] <= 1.7f); }
     // Projectile : sort a hauteur de main (pas a la ceinture).
     { Match m; setup(m, KENJI, TITAN, 200);
       Input q; q.down = true; st(m, q); st(m, q);

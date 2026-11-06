@@ -109,6 +109,12 @@ struct FighterDef {
 
 const FighterDef& def(FighterId id);
 
+// Coefficients d'equilibrage des degats infliges (1.0 = neutre), regles par la simulation IA contre IA
+// (test/balance.cpp --tune). Le joueur humain utilise toujours la ligne Maitre (reference) ; un combattant
+// pilote par l'IA utilise la ligne de son niveau (cf. set_ai_level) : a chaque niveau, les six combattants
+// ont ainsi des chances egales face a l'IA du meme niveau.
+extern float g_dmg_scale[3][FIGHTER_COUNT];   // [niveau Novice/Arcade/Maitre][combattant]
+
 // Echelle du mode Tournoi : 3 adversaires, le rival jure, puis Malakor (boss).
 // Ecrit 5 identifiants dans `out`.
 void build_ladder(FighterId player, FighterId out[5]);
@@ -145,6 +151,7 @@ struct Fighter {
     DirEntry  hist[16];
     uint8_t   hist_len;
     int16_t   ai_cooldown;
+    float     dmg_scale;          // coefficient d'equilibrage des degats infliges (cf. g_dmg_scale)
     float     walk_dist;          // distance cumulee a la marche : pilote le cycle de pas (pas de glissement)
 };
 
@@ -242,6 +249,8 @@ struct MatchRules {
 void init_match(Match& m, FighterId p1, FighterId p2, bool boss_match, uint32_t seed,
                 const MatchRules& rules = MatchRules());
 void start_next_round(Match& m);
+// Applique le coefficient du niveau `diff` au combattant de P2 (pilote par l'IA).
+void set_ai_level(Match& m, Difficulty diff);
 
 // UNE image logique a 60 Hz. `p1_in` : entrees du joueur. P2 est pilote par l'IA.
 void step_match(Match& m, const Input& p1_in, Difficulty diff);

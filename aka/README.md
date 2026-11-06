@@ -72,6 +72,15 @@ sont cherchées à côté de l'exécutable, ou dans `sd/IRONTOURNAMENT`. Audio :
 Options > **Manches** (1, 2 ou 3 à gagner) et **Temps** (30 s, 60 s, 99 s ou illimité), sauvegardées dans `config.dat`
 (un ancien `config.dat` reste lisible). Éventail de Mei-Lin rééquilibré comme dans le prototype web (démarrage 14, actif 14, récupération 11).
 
+## Équilibrage et niveaux (simulation IA contre IA)
+`sh test/run_balance.sh [parties] [niveau 0-2]` joue des milliers de matchs complets sur PC (1 à 30 s selon le nombre) et affiche
+la matrice de victoires des six combattants, la durée moyenne et l'écart entre niveaux. `--tune` règle automatiquement les
+coefficients de dégâts `g_dmg_scale[niveau][combattant]` (fight_data.cpp) : le joueur utilise toujours la ligne Maître, l'IA
+celle de son niveau. Résultats actuels (100 matchs par paire) : taux de victoire moyen par combattant de 43 à 60 % (Maître),
+38 à 70 % (Arcade, Mei-Lin trop forte), 46 à 55 % (Novice) ; Arcade bat Novice 82 %, Maître bat Arcade 67 %.
+Le balancement est celui de l'IA : un joueur humain n'en profitera pas de la même façon ; certaines paires restent très
+déséquilibrées (Kenji/Krowen, Krowen/Nyxia). Avant ce réglage, ~95 % des dégâts venaient des coups spéciaux et Titan gagnait 98 % de ses matchs.
+
 ## Cohérence physique des animations
 Audit mesuré sur les planches (`tools/gen_sprites.py` + moteur) :
 - **Marche** : le cycle de pas suit la *distance parcourue* (`walk_dist`) et non l'horloge. Avant, 160 px parcourus pour
