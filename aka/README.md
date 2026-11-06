@@ -79,6 +79,34 @@ Barre bleue sous la vie, conservée d'une manche à l'autre. Gains : +14 en touc
 invulnérable au départ), **Ki Cancel** (un EX annule la fin d'un spécial qui a touché, 50 Ki), **SUPER** à 100 Ki (↓+C : charge
 imblocable de 250 de base, un coup par combattant, nom affiché en bandeau). L'IA utilise EX et SUPER selon son niveau.
 
+## Mode réseau 2 joueurs (câble USB ou Wi-Fi)
+Menu principal > **Réseau 2 joueurs** : *Héberger* ou *Rejoindre*, par **câble USB** ou par **Wi-Fi**. Fonctionne console ↔ PC,
+PC ↔ PC et console ↔ console. L'hôte (J1) impose ses règles (manches, temps) ; MENU quitte la partie (pas de pause en réseau).
+
+**Principe (lockstep).** Les deux machines font tourner le *même* combat avec la *même* graine ; seules les entrées voyagent
+(2 octets par image). Délai d'entrée de 3 images (100 ms), entrées non acquittées répétées dans chaque paquet (une perte ne bloque
+rien), attente de l'adversaire si un paquet tarde, et un **condensé de l'état** échangé toutes les 30 images : un écart arrête la
+partie avec « Désynchronisation » au lieu de laisser les deux écrans diverger. Code : `main/games/fight/netplay.*` (portable,
+sans dépendance console ni SDL).
+
+| Liaison | Console AKA | PC |
+|---|---|---|
+| **Câble USB** | port USB natif (USB Serial/JTAG, apparaît comme un port série), trames SLIP + CRC-16 | `--serial COM5` ou `/dev/ttyACM0` (défaut Linux) ; réglage aussi dans `net.txt` |
+| **Wi-Fi** | l'hôte crée le réseau `IRON-TOURNAMENT` (WPA2, mot de passe `irontournament`) ; ou `wifi.txt` sur la SD (`ssid=`, `pass=`) pour utiliser votre box | UDP sur le réseau local, port 7777 (`--port`) ; l'invité retrouve l'hôte **par diffusion**, ou `--peer IP` / `peer=` dans `net.txt` |
+
+Exemples : console hôte en Wi-Fi → rejoindre le réseau `IRON-TOURNAMENT` depuis le PC, puis *Rejoindre (Wi-Fi)*. Câble :
+brancher l'USB de la console au PC, lancer `irontournament --serial COM5`, *Rejoindre (câble USB)* côté PC et *Héberger (câble USB)* côté console.
+
+**Vérifié :** tests de liaison simulée (25 % de pertes, doublons, retards, coupure, départ, désynchronisation, bruit sur le câble),
+UDP réel sur la boucle locale, et deux instances de la version PC qui se battent via les menus (`test/run_net_pc.sh`, lancé par la CI).
+**Non vérifié sur matériel :** le Wi-Fi et l'USB de la console (`main/net/net_link_esp.cpp` est compilé par la CI, pas encore essayé
+sur une AKA), ni le câble USB côté PC réel (Windows/Linux). **Risque principal :** le moteur doit donner exactement les mêmes
+résultats sur x86 et sur l'ESP32-S3 (virgule flottante simple précision). Il n'utilise que + − × ÷ et des comparaisons (le
+sinus/cosinus ne sert qu'aux particules, exclues du condensé) et il est compilé avec `-ffp-contract=off` sur toutes les cibles ; si une
+différence subsistait, la partie s'arrêterait sur « Désynchronisation » (pas de divergence silencieuse).
+**Pas de jeu par Internet** : il faudrait un serveur-relais et traverser les box (NAT), et un délai de 100 ms ne suffit plus au-delà
+de quelques dizaines de ms de latence ; ce serait un autre chantier (retour arrière / « rollback »).
+
 ## Équilibrage et niveaux (simulation IA contre IA)
 `sh test/run_balance.sh [parties] [niveau 0-2]` joue des milliers de matchs complets sur PC (1 à 30 s selon le nombre) et affiche
 la matrice de victoires des six combattants, la durée moyenne et l'écart entre niveaux. `--tune` règle automatiquement les

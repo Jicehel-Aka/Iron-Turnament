@@ -24,6 +24,7 @@ jobs:
       - run: sudo apt-get update && sudo apt-get install -y libsdl2-dev xvfb
       - run: cmake -S pc -B build-pc -DCMAKE_BUILD_TYPE=Release && cmake --build build-pc -j
       - run: SDL_AUDIODRIVER=dummy xvfb-run -a ./build-pc/irontournament --autotest --data "$RUNNER_TEMP/at" --scale 2
+      - run: xvfb-run -a sh test/run_net_pc.sh build-pc/irontournament
 
   pc-windows:
     runs-on: windows-latest

@@ -38,4 +38,19 @@ struct GameModule {
 
 const GameModule& module_fight();
 
+// -----------------------------------------------------------------------------
+// Mode reseau 2 joueurs (cable USB ou Wi-Fi) — implemente dans fight_module.cpp
+// -----------------------------------------------------------------------------
+// Ouvre la liaison et prepare la session. `kind` : 0 = cable USB, 1 = Wi-Fi. L'hote impose les regles de
+// `rules` (manches, temps). Renvoie false (message technique dans `err`) si la liaison est impossible.
+bool net_open(uint8_t kind, bool host, uint8_t my_fighter, const MatchSetup& rules, char* err, unsigned errn);
+int  net_poll(uint32_t now_ms);          // attente de l'adversaire : 0 = en cours, 1 = pret, -1 = echec
+int  net_error();                        // code d'erreur (fight::net::NetError) apres un echec
+const char* net_detail();                // adresse / port a afficher pendant l'attente
+void net_begin_match();                  // quand net_poll() == 1 : lance le combat
+bool net_active();                       // une session reseau est ouverte
+int  net_match_state();                  // en combat : 0 = ok, -1 = liaison perdue / erreur (voir net_error)
+uint32_t net_sim_tick();                 // images de jeu reseau simulees (diagnostic / tests)
+void net_close();                        // previent l'adversaire et ferme la liaison (sans danger si inactive)
+
 } // namespace shell

@@ -26,10 +26,16 @@ add_executable(irontournament
     ${ROOT}/main/games/fight/fight_view.cpp
     ${ROOT}/main/games/fight/fight_sprites.cpp
     ${ROOT}/main/games/fight/fight_module.cpp
+    ${ROOT}/main/games/fight/netplay.cpp
+    ${ROOT}/main/net/net_udp.cpp
+    pc_net.cpp
     ${ROOT}/main/assets/gfx/font_accents.cpp)
 
 # font8x8_basic.h (composant gamebuino) initialise des char avec des valeurs > 127.
 set_source_files_properties(pc_graphics.cpp PROPERTIES COMPILE_OPTIONS -Wno-narrowing)
+# Determinisme du mode reseau : pas de multiplication-addition fusionnee dans le moteur (cf. netplay.h).
+set_source_files_properties(${ROOT}/main/games/fight/fight_engine.cpp ${ROOT}/main/games/fight/fight_ai.cpp
+    ${ROOT}/main/games/fight/fight_data.cpp ${ROOT}/main/games/fight/netplay.cpp PROPERTIES COMPILE_OPTIONS -ffp-contract=off)
 
 target_include_directories(irontournament PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/compat
@@ -46,6 +52,9 @@ elseif(TARGET SDL2::SDL2)
 else()
   target_include_directories(irontournament PRIVATE ${SDL2_INCLUDE_DIRS})
   target_link_libraries(irontournament PRIVATE ${SDL2_LIBRARIES})
+endif()
+if(WIN32)
+  target_link_libraries(irontournament PRIVATE ws2_32)
 endif()
 if(MINGW)
   target_link_options(irontournament PRIVATE -mwindows -static-libgcc -static-libstdc++)
