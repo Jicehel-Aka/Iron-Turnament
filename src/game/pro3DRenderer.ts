@@ -427,7 +427,7 @@ function appendFighter3DMesh(
     isTitan
       ? '#64748B'
       : f.id === 'kenji'
-      ? '#DC2626'
+      ? '#2563EB'
       : isMalakor
       ? '#7E22CE'
       : f.id === 'krowen'
@@ -530,13 +530,13 @@ function appendFighter3DMesh(
 
   if (f.id === 'kenji') {
     const bandMid = { x: headTop.x, y: headTop.y - 1.3, z: headTop.z };
-    push3DTaperedLimb(faces, bandMid, headTop, 6.0, 6.0, 8, camX, camY, '#DC2626', '#EF4444', 0.2, 1);
+    push3DTaperedLimb(faces, bandMid, headTop, 6.0, 6.0, 8, camX, camY, '#1E40AF', '#3B82F6', 0.2, 1);
     const tailTip = toW({
       x: pose.head.x - 16,
       y: pose.head.y + Math.sin(globalFrame * 0.25) * 3.5,
       z: pose.head.z + 2.5,
     });
-    push3DTaperedLimb(faces, bandMid, tailTip, 1.7, 0.5, 4, camX, camY, '#DC2626', '#DC2626', 0.1, 1);
+    push3DTaperedLimb(faces, bandMid, tailTip, 1.7, 0.5, 4, camX, camY, '#2563EB', '#2563EB', 0.1, 1);
   } else if (f.id === 'meilin') {
     const bun = toW({ x: pose.head.x - 5, y: pose.head.y + 4, z: pose.head.z });
     const tail = toW({ x: pose.head.x - 15, y: pose.head.y - 4 + Math.sin(globalFrame * 0.24) * 3, z: pose.head.z + 2 });

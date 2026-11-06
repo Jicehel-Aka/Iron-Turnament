@@ -14,10 +14,10 @@ export const FIGHTERS: Record<FighterId, FighterDefinition> = {
     origin: 'Kyoto, Japon',
     fightingStyle: 'Karaté Shotokan Purifié',
     archetype: 'Équilibré (Shoto)',
-    portraitUrl: '/src/assets/images/kenji_portrait_new_1793977786823.jpg',
+    portraitUrl: '/src/assets/images/kenji_portrait_blue_1793978550000_1793978809971.jpg',
     portraitCropClass: 'object-cover object-center',
     primaryColor: '#F1F5F9',   // Gi blanc
-    secondaryColor: '#DC2626', // Bandeau écarlate
+    secondaryColor: '#2563EB', // Bandeau & gants bleu saphir
     skinColor: '#E0A97E',
     accentColor: '#38BDF8',    // Ki céleste
     rivalId: 'krowen',

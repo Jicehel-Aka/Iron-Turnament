@@ -783,7 +783,7 @@ function drawSculptedHand(
     isTitan
       ? '#94A3B8'
       : f.id === 'kenji'
-      ? '#DC2626'
+      ? '#2563EB'
       : f.id === 'malakor'
       ? '#7E22CE'
       : f.id === 'krowen'
@@ -1216,22 +1216,19 @@ function drawShoulderDetail(
     ctx.lineWidth = 0.85;
     ctx.stroke();
   } else if (f.id === 'kenji') {
-    // Épaule déchirée sans manches du kimono de karaté (franges authentiques Street Fighter)
+    // Manches courtes nettes du kimono blanc (couture soignée, pas de déchirures)
     const ramp = buildSmoothRamp(def.primaryColor, dim);
     ctx.fillStyle = ramp.contour;
     ctx.beginPath();
-    ctx.arc(s.x - 0.7, s.y - 0.9, 4.9, Math.PI * 0.75, Math.PI * 2.08);
+    ctx.arc(s.x, s.y - 0.4, 5.0, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = ramp.light;
     ctx.beginPath();
-    ctx.moveTo(s.x - 4.8, s.y + 0.8);
-    ctx.quadraticCurveTo(s.x - 2.2, s.y - 5.2, s.x + 3.4, s.y - 2.4);
-    ctx.lineTo(s.x + 2.2, s.y - 0.2);
-    ctx.lineTo(s.x + 0.6, s.y - 1.6);
-    ctx.lineTo(s.x - 1.2, s.y + 0.4);
-    ctx.lineTo(s.x - 2.8, s.y - 1.1);
-    ctx.closePath();
+    ctx.arc(s.x, s.y - 0.4, 4.4, 0, Math.PI * 2);
     ctx.fill();
+    ctx.strokeStyle = ramp.shadow;
+    ctx.lineWidth = 0.85;
+    ctx.stroke();
   }
 }
 
@@ -2035,22 +2032,22 @@ function drawDetailedHead(
     ctx.lineTo(hd.x + 2.0 * frontFactor, hd.y - 5.3);
     ctx.stroke();
 
-    // Bandeau Hachimaki rouge galbé avec pli de soie central
+    // Bandeau Hachimaki bleu roi avec reflet de soie céleste
     const bandGrad = ctx.createLinearGradient(hd.x - 6, hd.y - 4.6, hd.x + 6, hd.y - 2.0);
-    bandGrad.addColorStop(0, '#991B1B');
-    bandGrad.addColorStop(0.45, '#EF4444');
-    bandGrad.addColorStop(0.7, '#FCA5A5');
-    bandGrad.addColorStop(1, '#B91C1C');
+    bandGrad.addColorStop(0, '#1E3A8A');
+    bandGrad.addColorStop(0.45, '#2563EB');
+    bandGrad.addColorStop(0.7, '#93C5FD');
+    bandGrad.addColorStop(1, '#1D4ED8');
     ctx.fillStyle = bandGrad;
     ctx.beginPath();
     ctx.roundRect(hd.x - 6.2, hd.y - 4.6, 12.6, 2.65, 0.9);
     ctx.fill();
 
-    // Nœud latéral 3D qui tourne autour de la tête et pans cinétiques réactifs aux sauts et déplacements
+    // Nœud latéral 3D qui tourne autour de la tête et pans cinétiques bleu roi réactifs aux sauts
     const knotX = hd.x - 5.8 * faceFacing;
     const knotY = hd.y - 3.2;
 
-    ctx.fillStyle = '#991B1B';
+    ctx.fillStyle = '#1E40AF';
     ctx.beginPath();
     ctx.moveTo(knotX, knotY);
     ctx.quadraticCurveTo(
@@ -2069,7 +2066,7 @@ function drawDetailedHead(
     ctx.closePath();
     ctx.fill();
 
-    ctx.fillStyle = '#EF4444';
+    ctx.fillStyle = '#3B82F6';
     ctx.beginPath();
     ctx.moveTo(knotX, knotY - 1.0);
     ctx.quadraticCurveTo(
@@ -2088,7 +2085,7 @@ function drawDetailedHead(
     ctx.closePath();
     ctx.fill();
 
-    ctx.fillStyle = '#F87171';
+    ctx.fillStyle = '#60A5FA';
     ctx.beginPath();
     ctx.arc(knotX, knotY, 1.55, 0, Math.PI * 2);
     ctx.fill();
