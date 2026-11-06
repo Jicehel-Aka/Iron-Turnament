@@ -361,12 +361,94 @@ static void test_options_and_physics() {
       CHECK(seen); }
 }
 
+
+// Jauge de Ki : gains, EX (50), Ki Cancel, SUPER (100), conservation entre manches.
+static void test_ki() {
+    std::printf("[ki]\n");
+    Match m;
+
+    // Gains : frapper +14, encaisser +8.
+    setup(m, TITAN, KENJI, 40);
+    { Input in; in.jp_b = true; in.b = true; st(m, in); }
+    for (int i = 0; i < 20; ++i) st(m, none());
+    CHECK(m.f[0].ki == 14);
+    CHECK(m.f[1].ki == 8);
+
+    // Lancer un special NORMAL ne coute et ne rapporte rien.
+    setup(m, KENJI, MALAKOR, 200);
+    m.f[0].ki = 70;
+    { Input in; in.right = true; in.jp_special = true; in.special = true; st(m, in); }
+    CHECK(m.f[0].action == A_SPECIAL_1);
+    CHECK(m.f[0].power == 0);
+    CHECK(m.f[0].ki == 70);
+
+    // EX : C maintenu + A => coute 50, power 1, projectile plus fort que le normal.
+    int dmg_normal = 0, dmg_ex = 0;
+    for (int pass = 0; pass < 2; ++pass) {
+        setup(m, KENJI, MALAKOR, 200);
+        m.f[0].ki = pass ? 80 : 0;
+        Input in; in.right = true; in.jp_special = true; in.special = true; in.a = pass == 1;
+        st(m, in);
+        CHECK(m.f[0].action == A_SPECIAL_1);
+        CHECK(m.f[0].power == (pass ? 1 : 0));
+        if (pass) { CHECK(m.f[0].ki == 30); CHECK(m.f[0].invuln > 0); }
+        int d = 0;
+        for (int i = 0; i < 14; ++i) { st(m, none()); for (auto& p : m.proj) if (p.alive && p.owner == 1) d = p.damage; }
+        (pass ? dmg_ex : dmg_normal) = d;
+    }
+    CHECK(dmg_normal > 0);
+    CHECK(dmg_ex >= dmg_normal * 13 / 10);
+
+    // EX sans assez de Ki : special NORMAL.
+    setup(m, KENJI, MALAKOR, 200);
+    m.f[0].ki = 49;
+    { Input in; in.right = true; in.jp_special = true; in.special = true; in.a = true; st(m, in); }
+    CHECK(m.f[0].power == 0);
+    CHECK(m.f[0].ki == 49);
+
+    // SUPER : bas + C a 100 Ki => vide la jauge, frappe imblocable (meme garde tenue), gros degats.
+    setup(m, KENJI, MALAKOR, 70);
+    m.f[0].ki = 100;
+    const int hp0 = m.f[1].hp;
+    { Input in; in.down = true; in.jp_special = true; in.special = true; st(m, in); }
+    CHECK(m.f[0].power == 2);
+    CHECK(m.f[0].ki == 0);
+    CHECK(m.banner == BN_SUPER);
+    Input guard; guard.left = false; guard.right = true;     // P2 regarde a gauche : "right" = garde arriere
+    for (int i = 0; i < SUPER_STARTUP + SUPER_ACTIVE + 4; ++i) st(m, none(), guard);
+    CHECK(m.f[1].hp < hp0 - 150);
+    CHECK(m.f[1].action == A_KNOCKDOWN || m.f[1].action == A_DEFEAT || m.phase != PH_FIGHT);
+
+    // SUPER refuse sous 100 Ki.
+    setup(m, KENJI, MALAKOR, 70);
+    m.f[0].ki = 99;
+    { Input in; in.down = true; in.jp_special = true; in.special = true; st(m, in); }
+    CHECK(m.f[0].power == 0);
+    CHECK(m.f[0].ki == 99);
+
+    // Ki Cancel : un normal qui touche, puis EX => special enchaine (50 Ki).
+    setup(m, KENJI, MALAKOR, 40);
+    m.f[0].ki = 60;
+    { Input in; in.jp_b = true; in.b = true; st(m, in); }
+    for (int i = 0; i < 14; ++i) st(m, none());
+    CHECK(m.f[0].ki >= 74);
+
+    // Le Ki est conserve a la manche suivante.
+    setup(m, KENJI, MALAKOR, 60);
+    m.f[0].ki = 77; m.f[1].ki = 33;
+    m.f[1].hp = 0;
+    start_next_round(m);
+    CHECK(m.f[0].ki == 77);
+    CHECK(m.f[1].ki == 33);
+}
+
 int main() {
     test_ladder();
     test_shortcut_and_motions();
     test_blocking_and_chip();
     test_timeout();
     test_options_and_physics();
+    test_ki();
     test_round_flow();
     test_boss_boost();
     test_determinism();

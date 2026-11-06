@@ -30,6 +30,7 @@ static const FighterDef DEFS[FIGHTER_COUNT] = {
         { "Ouragan Ecarlate", MO_QCB, SC_BACK,  86, 16,  9, 20, 20, SP_DASH_STRIKE},
       },
       { "SCEAU DU VIDE CELESTE", RANGE_ANY, true },
+      "DRAGON DU CIEL BRISE",
       { 58, 38, 24 }, {124, 45, 18} },
 
     // ----------------------------------------------------------------- KROWEN
@@ -44,6 +45,7 @@ static const FighterDef DEFS[FIGHTER_COUNT] = {
         { "Souffle Calciné",   MO_QCF, SC_UP,    98, 20, 13, 14, 20, SP_OVERHEAD },
       },
       { "BUCHER DU SPECTRE", RANGE_MID, false },
+      "TEMPETE DE CENDRES",
       { 39, 39, 42}, {234, 88, 12} },
 
     // ----------------------------------------------------------------- MEILIN
@@ -58,6 +60,7 @@ static const FighterDef DEFS[FIGHTER_COUNT] = {
         { "Flèche du Phénix",  MO_DU,  SC_UP,    90, 16, 10, 18, 18, SP_OVERHEAD    },
       },
       { "DANSE DES MILLE LAMES", RANGE_CLOSE, false },
+      "PHENIX DES MILLE LAMES",
       { 30, 41, 59}, { 16,185,129} },
 
     // ------------------------------------------------------------------ TITAN
@@ -72,6 +75,7 @@ static const FighterDef DEFS[FIGHTER_COUNT] = {
         { "Séisme d'Oural",  MO_DD,  SC_BACK,  86, 18, 20, 14, 30, SP_QUAKE        },
       },
       { "SUPLEX ORBITAL ROUGE", RANGE_CLOSE, false },
+      "CHUTE DU TITAN",
       { 51, 65, 85}, {245,158, 11} },
 
     // ------------------------------------------------------------------ NYXIA
@@ -86,6 +90,7 @@ static const FighterDef DEFS[FIGHTER_COUNT] = {
         { "Torpille d'Orage",  MO_BF,  SC_UP,    94, 18,  9, 18, 22, SP_DASH_STRIKE},
       },
       { "SENTENCE ZENITHALE", RANGE_ANY, false },
+      "FOUDRE ZENITHALE",
       {203,213,225}, {  8,145,178} },
 
     // ---------------------------------------------------------------- MALAKOR
@@ -100,14 +105,15 @@ static const FighterDef DEFS[FIGHTER_COUNT] = {
         { "Egide Noire",          MO_QCB, SC_BACK,  80, 16, 12, 18, 22, SP_PROJECTILE  },
       },
       { "OBLITERATION IMPERIALE", RANGE_ANY, false },
+      "COURONNE DE SANG",
       { 41, 37, 36}, {168, 85,247} },
 };
 
 const FighterDef& def(FighterId id) { return DEFS[id]; }
 float g_dmg_scale[3][FIGHTER_COUNT] = {
     // Kenji, Krowen, Mei-Lin, Titan, Nyxia, Malakor
-    { 0.75f, 1.19f, 0.98f, 1.37f, 0.65f, 1.10f },   // Novice
-    { 0.83f, 0.90f, 0.60f, 1.60f, 1.53f, 1.39f },   // Arcade
+    { 0.876f, 0.936f, 0.878f, 1.253f, 0.877f, 1.007f },   // Novice
+    { 1.074f, 0.856f, 0.600f, 1.600f, 1.600f, 1.305f },   // Arcade
     { 0.80f, 1.22f, 1.05f, 0.98f, 1.10f, 1.11f },   // Maitre (reference, aussi pour le joueur)
 };
 

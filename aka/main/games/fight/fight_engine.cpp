@@ -332,8 +332,8 @@ static void apply_damage(Match& m, Fighter& atk, Fighter& dfn, int raw, bool kno
     dfn.hp = (int16_t)imax(0, dfn.hp - dmg);
     dfn.combo_count++;
     dfn.combo_timer = 42;
-    atk.ki = (uint8_t)imin(100, atk.ki + 14);
-    dfn.ki = (uint8_t)imin(100, dfn.ki + 8);
+    if (atk.power < 2) atk.ki = (uint8_t)imin(KI_MAX, atk.ki + 14);   // pas de Ki en retour d'un SUPER
+    dfn.ki = (uint8_t)imin(KI_MAX, dfn.ki + 8);
 
     if (was_attacking && !unblockable && m.banner_timer <= 0) {
         banner(m, BN_COUNTER, atk.id, 34);
@@ -380,7 +380,8 @@ static void resolve_strike(Match& m, Fighter& atk, Fighter& dfn, int base, int c
         dfn.hp = (int16_t)imax(1, dfn.hp - imax(0, chip));
         start_action(dfn, dfn_in->down ? A_BLOCK_LOW : A_BLOCK_HIGH, 12);
         dfn.vx = -dfn.facing * 1.9f;
-        atk.ki = (uint8_t)imin(100, atk.ki + 6);
+        atk.ki = (uint8_t)imin(KI_MAX, atk.ki + 6);
+        dfn.ki = (uint8_t)imin(KI_MAX, dfn.ki + 4);
         m.hitstop = 3;
         sfx(m, SFX_BLOCK);
         spawn_particles(m, dfn.x + dfn.facing * 10, 174 + dfn.y, Rgb{147, 197, 253}, 7, 2.4f, 2);
@@ -453,12 +454,68 @@ static void spawn_projectile(Match& m, Fighter& f, const SpecialDef& sp) {
     }
 }
 
-static void trigger_special(Match& m, Fighter& f, int idx) {
+// Special EFFECTIF : la version EX est plus rapide et frappe plus fort (le SUPER a sa propre routine).
+static SpecialDef eff_special(const Fighter& f, int idx) {
+    SpecialDef sp = def(f.id).specials[idx];
+    if (f.power == 1) {
+        sp.damage  = (int16_t)std::lround(sp.damage * 1.4f);
+        sp.chip    = (int16_t)std::lround(sp.chip * 1.5f + 2);
+        sp.startup = (uint8_t)imax(3, sp.startup - 3);
+        sp.recovery = (uint8_t)imax(6, sp.recovery - 4);
+    }
+    return sp;
+}
+
+// SUPER : charge imblocable. Phase d'elan (invulnerable), coup unique, longue recuperation.
+static constexpr int SUPER_DAMAGE = 250;
+static constexpr float SUPER_REACH = 96.0f;
+
+static void trigger_super(Match& m, Fighter& f) {
+    start_action(f, A_SPECIAL_1, SUPER_STARTUP + SUPER_ACTIVE + SUPER_RECOVERY);
+    f.power = 2;
+    f.ki = 0;
+    f.invuln = SUPER_STARTUP;
+    f.vx = 0;
+    m.dark_flash = 40;
+    m.shake = 6;
+    banner(m, BN_SUPER, f.id, 60);
+    sfx(m, SFX_SUPER);
+    spawn_particles(m, f.x, 176 + f.y, def(f.id).accent, 24, 4.2f, 3);
+}
+
+static void ongoing_super(Match& m, Fighter& f, Fighter& opp) {
+    // Elan vers l'adversaire pendant la mise en place, puis freinage.
+    if (f.action_frame < SUPER_STARTUP) {
+        const float dx = (opp.x - f.x) * f.facing;
+        f.vx = dx > 40.0f ? f.facing * 5.0f : 0.0f;
+        if ((f.action_frame & 3) == 0) spawn_particles(m, f.x, 190 + f.y, def(f.id).accent, 3, 2.0f, 2);
+    } else {
+        f.vx *= 0.6f;
+    }
+    if (f.action_frame >= SUPER_STARTUP && f.action_frame <= SUPER_STARTUP + SUPER_ACTIVE && !f.hit_confirmed) {
+        const float dx = (opp.x - f.x) * f.facing;
+        const float dy = std::fabs(opp.y - f.y);
+        if (dx >= -10.0f && dx <= SUPER_REACH && dy <= 46.0f && opp.invuln <= 0) {
+            f.hit_confirmed = true;
+            m.dark_flash = 30;
+            resolve_strike(m, f, opp, SUPER_DAMAGE, 0, 0, true, nullptr);
+        }
+    }
+}
+
+static void trigger_special(Match& m, Fighter& f, int idx, int power) {
     const FighterDef& d = def(f.id);
-    const SpecialDef& sp = d.specials[idx];
+    f.power = (uint8_t)power;
+    if (power == 1) {
+        f.ki = (uint8_t)(f.ki - KI_EX_COST);
+        f.invuln = imax(f.invuln, 6);
+        m.dark_flash = imax(m.dark_flash, 10);
+        banner(m, BN_EX, f.id, 28);
+        spawn_particles(m, f.x, 180 + f.y, Rgb{250, 204, 21}, 12, 3.4f, 3);
+    }
+    const SpecialDef sp = eff_special(f, idx);
     start_action(f, (Action)(A_SPECIAL_1 + idx), sp.startup + sp.active + sp.recovery);
     f.vx = 0;
-    f.ki = (uint8_t)imin(100, f.ki + 10);
 
     spawn_particles(m, f.x, 184 + f.y, d.accent, 8, 2.6f, 2);
 
@@ -487,9 +544,9 @@ static void trigger_special(Match& m, Fighter& f, int idx) {
 
 static void ongoing_special(Match& m, Fighter& f, Fighter& opp) {
     if (!is_special(f.action)) return;
-    const FighterDef& d = def(f.id);
+    if (f.power == 2) { ongoing_super(m, f, opp); return; }
     const int idx = f.action - A_SPECIAL_1;
-    const SpecialDef& sp = d.specials[idx];
+    const SpecialDef sp = eff_special(f, idx);
 
     // Tir au frame exact de startup.
     if ((sp.type == SP_PROJECTILE || sp.type == SP_HARPOON || sp.type == SP_TRAP_ORB) &&
@@ -590,6 +647,7 @@ static bool try_finisher(Match& m, Fighter& winner, Fighter& loser, const Input&
 static void update_fighter(Match& m, Fighter& f, Fighter& opp, const Input& in) {
     const FighterDef& d = def(f.id);
     record_direction(f, in, m.frame);
+    if (!is_special(f.action)) f.power = 0;
 
     if (f.invuln > 0) f.invuln--;
     if (f.ai_cooldown > 0) f.ai_cooldown--;
@@ -640,15 +698,29 @@ static void update_fighter(Match& m, Fighter& f, Fighter& opp, const Input& in) 
 
     f.action_frame++;
 
-    // Annulation d'un normal qui a touché par un spécial (« 2-in-1 cancel »).
+    // Demande de puissance : EX = C maintenu avec A ou B (50 Ki) ; SUPER = bas + C (100 Ki).
+    const bool ex_req    = in.special && (in.a || in.b) && f.ki >= KI_EX_COST;
+    const bool super_req = in.down && in.jp_special && f.ki >= KI_SUPER_COST && m.phase == PH_FIGHT;
+
+    // Annulation d'un normal qui a touché par un spécial (« 2-in-1 cancel »), et « Ki Cancel » :
+    // un EX peut annuler la fin d'un spécial qui a touché ou ete garde (50 Ki).
     const bool special_cancel =
         (f.action == A_LIGHT || f.action == A_HEAVY || f.action == A_UPPERCUT) &&
         f.hit_confirmed && f.y >= 0;
+    const bool ki_cancel =
+        is_special(f.action) && f.power < 2 && f.hit_confirmed && f.y >= 0 && ex_req &&
+        f.action_frame > def(f.id).specials[f.action - A_SPECIAL_1].startup +
+                         def(f.id).specials[f.action - A_SPECIAL_1].active;
 
-    if ((can_act(f) && f.y >= 0) || special_cancel) {
+    if (super_req && ((can_act(f) && f.y >= 0) || special_cancel)) {
+        trigger_super(m, f);
+        apply_physics(f);
+        return;
+    }
+    if ((can_act(f) && f.y >= 0) || special_cancel || ki_cancel) {
         const int k = detect_special(f, in);
         if (k >= 0) {
-            trigger_special(m, f, k);
+            trigger_special(m, f, k, ex_req ? 1 : 0);
             apply_physics(f);
             return;
         }
@@ -786,7 +858,8 @@ static void check_melee(Match& m, Fighter& atk, Fighter& dfn, const Input& dfn_i
         height = 1; knockdown = true;
         break;
     case A_SPECIAL_1: case A_SPECIAL_2: case A_SPECIAL_3: {
-        const SpecialDef& sp = d.specials[atk.action - A_SPECIAL_1];
+        if (atk.power == 2) return;                       // le SUPER gere sa propre frappe (ongoing_super)
+        const SpecialDef sp = eff_special(atk, atk.action - A_SPECIAL_1);
         if (sp.type == SP_ANTI_AIR || sp.type == SP_DASH_STRIKE ||
             sp.type == SP_OVERHEAD || sp.type == SP_TELEPORT) {
             a0 = sp.startup; a1 = sp.startup + sp.active;

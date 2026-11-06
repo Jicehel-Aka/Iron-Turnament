@@ -10,7 +10,8 @@ puis Malakor le boss) et duels libres. Trois niveaux d'IA (Novice / Arcade / Ma�
 |---|---|
 | D-Pad / joystick | avancer, reculer, sauter, s'accroupir |
 | A / B | poing / pied (↓+A uppercut, ↓+B balayette) |
-| C | coup spécial : →+C, ←+C, ↑+C (ou le mouvement arcade classique) ; ↓+C esquive |
+| C | coup spécial : →+C, ←+C, ↑+C (ou le mouvement arcade classique) ; ↓+C esquive (ou SUPER à 100 Ki) |
+| C maintenu + A ou B | spécial **EX** (50 Ki) |
 | MENU (court) | pause |
 | MENU (long, 600 ms) | capture d'écran |
 | RUN + MENU (500 ms) | retour au loader |
@@ -72,12 +73,18 @@ sont cherchées à côté de l'exécutable, ou dans `sd/IRONTOURNAMENT`. Audio :
 Options > **Manches** (1, 2 ou 3 à gagner) et **Temps** (30 s, 60 s, 99 s ou illimité), sauvegardées dans `config.dat`
 (un ancien `config.dat` reste lisible). Éventail de Mei-Lin rééquilibré comme dans le prototype web (démarrage 14, actif 14, récupération 11).
 
+## Jauge de Ki
+Barre bleue sous la vie, conservée d'une manche à l'autre. Gains : +14 en touchant, +8 en encaissant, +6 / +4 en gardant
+(attaquant / défenseur). Dépenses : **EX** à 50 Ki (spécial lancé avec C maintenu + A ou B : dégâts ×1,4, départ plus vif,
+invulnérable au départ), **Ki Cancel** (un EX annule la fin d'un spécial qui a touché, 50 Ki), **SUPER** à 100 Ki (↓+C : charge
+imblocable de 250 de base, un coup par combattant, nom affiché en bandeau). L'IA utilise EX et SUPER selon son niveau.
+
 ## Équilibrage et niveaux (simulation IA contre IA)
 `sh test/run_balance.sh [parties] [niveau 0-2]` joue des milliers de matchs complets sur PC (1 à 30 s selon le nombre) et affiche
 la matrice de victoires des six combattants, la durée moyenne et l'écart entre niveaux. `--tune` règle automatiquement les
 coefficients de dégâts `g_dmg_scale[niveau][combattant]` (fight_data.cpp) : le joueur utilise toujours la ligne Maître, l'IA
-celle de son niveau. Résultats actuels (100 matchs par paire) : taux de victoire moyen par combattant de 43 à 60 % (Maître),
-38 à 70 % (Arcade, Mei-Lin trop forte), 46 à 55 % (Novice) ; Arcade bat Novice 82 %, Maître bat Arcade 67 %.
+celle de son niveau. Résultats actuels, Ki compris (150 matchs par paire) : taux de victoire moyen par combattant de 44 à 58 %
+(Maître), 43 à 62 % (Arcade), 45 à 57 % (Novice) ; Arcade bat Novice 81 %, Maître bat Arcade 63 %.
 Le balancement est celui de l'IA : un joueur humain n'en profitera pas de la même façon ; certaines paires restent très
 déséquilibrées (Kenji/Krowen, Krowen/Nyxia). Avant ce réglage, ~95 % des dégâts venaient des coups spéciaux et Titan gagnait 98 % de ses matchs.
 

@@ -104,6 +104,7 @@ struct FighterDef {
     AiProfile   ai;
     SpecialDef  specials[3];
     FinisherDef finisher;
+    const char* super_name;                          // nom du SUPER (100 Ki), deja en MAJUSCULES
     Rgb         floor_main, floor_trim;              // sol procedural du decor
 };
 
@@ -124,6 +125,14 @@ void build_ladder(FighterId player, FighterId out[5]);
 // -----------------------------------------------------------------------------
 enum Difficulty : uint8_t { DIFF_NOVICE = 0, DIFF_ARCADE = 1, DIFF_MASTER = 2 };
 
+// Regles du Ki : la jauge se remplit en frappant (+14), en encaissant (+8) et en gardant (+4 / +6 pour
+// l'attaquant). Elle est CONSERVEE d'une manche a l'autre et se depense ainsi :
+//   - EX    (50 Ki) : special + C maintenu avec A ou B -> degats x1.4, depart plus vif, invulnerable au depart ;
+//   - CANCEL (50 Ki) : un EX annule la fin d'un special qui a touche ou ete garde ;
+//   - SUPER (100 Ki) : bas + C -> charge imblocable, un coup unique par combattant.
+constexpr int KI_MAX = 100, KI_EX_COST = 50, KI_SUPER_COST = 100;
+constexpr int SUPER_STARTUP = 16, SUPER_ACTIVE = 8, SUPER_RECOVERY = 30;   // images logiques du SUPER
+
 struct Input {
     bool left = false, right = false, up = false, down = false;
     bool a = false, b = false, special = false;          // etat maintenu
@@ -140,7 +149,8 @@ struct Fighter {
     int8_t    facing;             // +1 droite, -1 gauche
     int16_t   hp, max_hp;
     float     display_hp;         // barre rouge residuelle
-    uint8_t   ki;
+    uint8_t   ki;                 // jauge de Ki 0..KI_MAX (cf. regles du Ki ci-dessous)
+    uint8_t   power;              // puissance du special en cours : 0 normal, 1 EX (50 Ki), 2 SUPER (100 Ki)
     Action    action;
     int16_t   action_frame, action_total;
     bool      hit_confirmed;
@@ -197,14 +207,16 @@ enum BannerId : uint8_t {
     BN_HONOR,           // SCEAU D'HONNEUR ! / nom du coup de `arg`
     BN_KO,              // K.O. ! / `arg` remporte la manche
     BN_PERFECT,         // PARFAIT ! / `arg` remporte la manche
-    BN_TIME             // TEMPS ECOULE ! / `arg` l'emporte aux points
+    BN_TIME,            // TEMPS ECOULE ! / `arg` l'emporte aux points
+    BN_SUPER,           // nom du SUPER de `arg`
+    BN_EX               // EX ! / nom du special de `arg`
 };
 
 // Evenements sonores de la derniere image (OR de bits) ; la vue les consomme.
 enum SfxBit : uint16_t {
     SFX_WHIFF = 1, SFX_LIGHT = 2, SFX_HEAVY = 4, SFX_BLOCK = 8, SFX_SPECIAL = 16,
     SFX_THROW = 32, SFX_JUMP = 64, SFX_KO = 128, SFX_FINISH_STING = 256,
-    SFX_FINISHER = 512, SFX_BELL = 1024, SFX_VICTORY = 2048, SFX_TELEPORT = 4096
+    SFX_FINISHER = 512, SFX_BELL = 1024, SFX_VICTORY = 2048, SFX_TELEPORT = 4096, SFX_SUPER = 8192
 };
 
 constexpr int MAX_PROJ = 8;
