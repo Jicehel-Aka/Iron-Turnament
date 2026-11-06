@@ -607,6 +607,193 @@ static void draw_projectiles(const Match& m, float cam_x, int now_frame) {
 }
 
 // -----------------------------------------------------------------------------
+// Décors animés
+// -----------------------------------------------------------------------------
+// Effets SANS ETAT : chaque position est une fonction pure de l'horloge `t` (m.frame, 60 Hz) et d'une graine
+// entière. Rien n'est stocké, rien ne touche au moteur (ni à son hasard) : le rendu reste rejouable et identique
+// sur les deux machines d'une partie en réseau. Les coordonnées sont celles du décor 360x176 (avant parallaxe).
+struct Fx { int ox, oy, t; };      // décor -> écran : x_ecran = x - ox ; y_ecran = y + oy
+
+static uint32_t h32(uint32_t x) { x ^= x >> 16; x *= 0x7feb352du; x ^= x >> 15; x *= 0x846ca68bu; x ^= x >> 16; return x; }
+static float fr(uint32_t s) { return (float)(h32(s) & 0xFFFF) / 65536.0f; }          // [0,1)
+static float fract1(float v) { return v - std::floor(v); }
+static uint16_t rgb(int r, int g, int b) { return graphics_make_color((uint8_t)r, (uint8_t)g, (uint8_t)b); }
+
+static void fx_rect(const Fx& c, float x, float y, int w, int h, uint16_t k) {
+    const int X = (int)x - c.ox, Y = (int)y + c.oy;
+    if (X < 0 || Y < HUD_H + 1 || X + w > SCR_W || Y + h > SCR_H) return;
+    graphics_fill_rect_raw(X, Y, w, h, k);
+}
+
+static void fx_line(const Fx& c, float x0, float y0, float x1, float y1, uint16_t k) {
+    auto cl = [](int v, int lo, int hi) { return v < lo ? lo : (v > hi ? hi : v); };
+    graphics_draw_line_raw(cl((int)x0 - c.ox, 0, SCR_W - 1), cl((int)y0 + c.oy, HUD_H + 1, SCR_H - 1),
+                           cl((int)x1 - c.ox, 0, SCR_W - 1), cl((int)y1 + c.oy, HUD_H + 1, SCR_H - 1), k);
+}
+
+// Flamme qui vacille : deux triangles (contour + coeur), hauteur et inclinaison variables.
+static void fx_flame(const Fx& c, float bx, float by, float w, float h, uint16_t outer, uint16_t inner, uint32_t seed) {
+    const float f = 0.78f + 0.2f * std::sin(c.t * 0.35f + seed * 1.7f) + (fr(seed * 131u + (uint32_t)(c.t / 3)) - 0.5f) * 0.3f;
+    const float hh = h * f, sway = (fr(seed * 17u + (uint32_t)(c.t / 4)) - 0.5f) * w * 0.7f;
+    const int X = (int)bx - c.ox, Y = (int)by + c.oy;
+    if (X < 8 || X > SCR_W - 8 || Y - (int)h < HUD_H + 2 || Y > SCR_H - 2) return;
+    graphics_fill_triangle_raw(X - (int)(w / 2), Y, X + (int)(w / 2), Y, X + (int)sway, Y - (int)hh, outer);
+    graphics_fill_triangle_raw(X - (int)(w / 4), Y, X + (int)(w / 4), Y, X + (int)(sway * 0.6f), Y - (int)(hh * 0.62f), inner);
+}
+
+// Eclairs : un coup toutes les ~3,5 s (fenetre de 14 images, double frappe). Renvoie l'intensite du flash (0..8).
+static int lightning_phase(int t, uint32_t salt, int& slot, int& u) {
+    constexpr int P = 210;
+    slot = t / P;
+    const int start = 20 + (int)(h32((uint32_t)slot * 7919u + salt) % 120u);
+    u = t % P - start;
+    if (u < 0 || u >= 14) return 0;
+    return u < 3 ? 8 : (u < 6 ? 2 : (u < 9 ? 5 : (u < 12 ? 1 : 0)));
+}
+
+static void fx_bolt(const Fx& c, uint32_t seed, float x0, float spread, float y_end) {
+    float x = x0, y = 30;                       // le HUD masque les 34 premieres lignes
+    const uint16_t core = rgb(235, 245, 255), glow = rgb(110, 190, 255);
+    for (int j = 1; j <= 6; ++j) {
+        const float nx = x + (fr(seed * 97u + (uint32_t)j) - 0.5f) * spread, ny = 30.0f + (y_end - 30.0f) * j / 6.0f;
+        fx_line(c, x - 1, y, nx - 1, ny, glow); fx_line(c, x + 1, y, nx + 1, ny, glow);
+        fx_line(c, x, y, nx, ny, core);
+        if (j == 3 || j == 5) {                                         // ramification
+            const float bx = nx + (fr(seed * 31u + (uint32_t)j) - 0.3f) * 46.0f;
+            fx_line(c, nx, ny, bx, ny + 18, glow);
+        }
+        x = nx; y = ny;
+    }
+}
+
+static void fx_stage(const Match& m, int off, int shake_x, int shake_y) {
+    const Fx c{ off - shake_x, shake_y, (int)m.frame };
+    const int t = c.t;
+
+    switch (m.f[1].id) {
+    case KENJI: {                                       // dojo de Kyoto : petales de cerisier, lucioles
+        for (uint32_t i = 0; i < 16; ++i) {
+            const float period = 420.0f + fr(i * 3u) * 300.0f;
+            const float p = fract1((t + fr(i * 5u) * period) / period);
+            const float x = fr(i * 7u) * STAGE_W + std::sin(t * 0.018f + i * 1.3f) * 16.0f + p * 40.0f;
+            const float y = p * 165.0f;
+            const uint16_t k = (i & 1) ? rgb(255, 190, 205) : rgb(240, 140, 170);
+            fx_rect(c, x, y, ((t / 8 + (int)i) % 3 == 0) ? 3 : 2, ((t / 8 + (int)i) % 3 == 0) ? 1 : 2, k);
+        }
+        for (uint32_t i = 0; i < 6; ++i) {
+            const float b = (std::sin(t * 0.05f + i * 2.0f) + 1.0f) * 0.5f;
+            if (b < 0.4f) continue;
+            const float x = 30 + fr(i * 11u) * 300 + std::sin(t * 0.01f + i) * 20, y = 100 + fr(i * 13u) * 40 + std::cos(t * 0.013f + i * 2) * 10;
+            fx_rect(c, x, y, 2, 2, rgb(200, 235, 110));
+            fx_rect(c, x, y, 1, 1, rgb(255, 255, 200));
+        }
+        break;
+    }
+    case KROWEN: {                                      // fosse d'obsidienne : torches, braises, lave
+        static const float TORCH[6][3] = { {52, 57, 9}, {113, 68, 8}, {257, 68, 8}, {313, 57, 9}, {10, 116, 12}, {350, 116, 12} };
+        for (uint32_t i = 0; i < 6; ++i)
+            fx_flame(c, TORCH[i][0], TORCH[i][1], TORCH[i][2], TORCH[i][2] * 1.5f, rgb(255, 120, 20), rgb(255, 225, 110), i + 1);
+        for (uint32_t i = 0; i < 22; ++i) {             // braises montantes
+            const float period = 200.0f + fr(i * 3u) * 220.0f;
+            const float p = fract1((t + fr(i * 5u) * period) / period);
+            const float x = 40 + fr(i * 7u) * 280 + std::sin(t * 0.02f + i) * 8.0f, y = 125 - p * 105.0f;
+            const uint16_t k = p < 0.3f ? rgb(255, 220, 90) : (p < 0.7f ? rgb(255, 140, 40) : rgb(200, 60, 30));
+            fx_rect(c, x, y, p < 0.5f ? 2 : 1, p < 0.5f ? 2 : 1, k);
+        }
+        for (uint32_t i = 0; i < 6; ++i) {              // scintillement de la lave
+            if (((t / 5) + (int)i * 3) % 4 >= 2) continue;
+            fx_rect(c, 150 + fr(i * 19u + (uint32_t)(t / 10)) * 62, 108 + fr(i * 23u + (uint32_t)(t / 10)) * 16, 2, 1, rgb(255, 235, 140));
+        }
+        break;
+    }
+    case MEILIN: {                                      // port de Hong Kong : pluie battante, impacts au sol
+        for (uint32_t i = 0; i < 56; ++i) {
+            const float period = 16.0f + fr(i * 3u) * 10.0f;
+            const float p = fract1((t + fr(i * 5u) * period) / period);
+            const float x = fr(i * 7u) * (STAGE_W + 12) - p * 6.0f, y = -10 + p * 235.0f;
+            fx_line(c, x, y, x - 2, y + 6, rgb(150, 175, 205));
+        }
+        for (uint32_t i = 0; i < 10; ++i) {              // rides sur le sol mouille
+            const int life = (t / 2 + (int)i * 5) % 12;
+            const uint32_t slot = (uint32_t)((t / 2 + (int)i * 5) / 12);
+            const float x = fr(i * 29u + slot * 13u) * STAGE_W, y = 186 + fr(i * 31u + slot * 17u) * 46.0f;
+            const int w = 2 + life / 2 * 2;
+            fx_rect(c, x - w / 2, y, w, 1, life < 7 ? rgb(170, 190, 215) : rgb(100, 115, 140));
+        }
+        break;
+    }
+    case TITAN: {                                       // forge : etincelles, vapeur, neige dehors
+        for (uint32_t i = 0; i < 5; ++i)                // braises vives dans la gueule du four
+            fx_rect(c, 133 + fr(i * 5u + (uint32_t)(t / 4)) * 19, 84 + fr(i * 9u + (uint32_t)(t / 4)) * 26, 3, 2,
+                    (i & 1) ? rgb(255, 240, 170) : rgb(255, 190, 60));
+        for (uint32_t i = 0; i < 16; ++i) {             // etincelles de la coulee
+            const float period = 50.0f + fr(i * 3u) * 40.0f;
+            const float p = fract1((t + fr(i * 5u) * period) / period);
+            const float vx = (fr(i * 7u) - 0.5f) * 70.0f, vy = 38.0f + fr(i * 11u) * 40.0f;
+            const float x = 172 + vx * p, y = 118 - vy * p + 70.0f * p * p;
+            if (y > 138) continue;
+            fx_rect(c, x, y, p < 0.5f ? 2 : 1, p < 0.5f ? 2 : 1, p < 0.5f ? rgb(255, 235, 120) : rgb(255, 150, 40));
+        }
+        for (uint32_t i = 0; i < 4; ++i) {              // vapeur de la cheminee (nuage de points)
+            const float period = 160.0f + fr(i * 3u) * 60.0f;
+            const float p = fract1((t + fr(i * 5u) * period) / period);
+            const float cx = 146 + p * 12.0f + std::sin(t * 0.03f + i) * 3.0f, cy = 52 - p * 38.0f, r = 3.0f + p * 7.0f;
+            for (uint32_t j = 0; j < 9; ++j) {
+                if (p > 0.7f && (j & 1)) continue;
+                const uint32_t sd = i * 50u + j;
+                fx_rect(c, cx + (fr(sd) - 0.5f) * 2 * r, cy + (fr(sd + 99u) - 0.5f) * 2 * r, 2, 1, rgb(190, 195, 205));
+            }
+        }
+        for (uint32_t i = 0; i < 16; ++i) {             // neige derriere la baie vitree
+            const float x = 40 + fr(i * 3u) * 28 + std::sin(t * 0.03f + i) * 3.0f;
+            const float y = 32 + fract1((t * 0.4f + fr(i * 5u) * 500.0f) / 96.0f) * 96.0f;
+            fx_rect(c, x, y, (i % 3) ? 1 : 2, (i % 3) ? 1 : 2, rgb(240, 246, 255));
+        }
+        break;
+    }
+    case NYXIA: {                                       // sanctuaire d'Atacama : braseros + orage
+        static const float BRAZ[4][3] = { {8, 136, 13}, {75, 127, 10}, {283, 127, 10}, {352, 136, 13} };
+        for (uint32_t i = 0; i < 4; ++i)
+            fx_flame(c, BRAZ[i][0], BRAZ[i][1], BRAZ[i][2], BRAZ[i][2] * 1.3f, rgb(255, 140, 30), rgb(255, 230, 120), i + 11);
+        int slot, u;
+        const int fl = lightning_phase(t, 1u, slot, u);
+        if (fl > 2) fx_bolt(c, (uint32_t)slot * 5u + 3u, 40 + fr((uint32_t)slot * 13u) * 280.0f, 40.0f, 98.0f);
+        break;
+    }
+    case MALAKOR: {                                     // salle du trone : flammes violettes, torches, orage aux vitraux
+        static const float PUR[6][3] = { {5, 113, 12}, {118, 112, 14}, {143, 94, 8}, {216, 94, 8}, {241, 112, 14}, {354, 113, 12} };
+        for (uint32_t i = 0; i < 6; ++i)
+            fx_flame(c, PUR[i][0], PUR[i][1], PUR[i][2], PUR[i][2] * 1.5f, rgb(168, 70, 255), rgb(240, 175, 255), i + 21);
+        static const float GOLD[4][2] = { {16, 60}, {83, 62}, {277, 62}, {343, 62} };
+        for (uint32_t i = 0; i < 4; ++i)
+            fx_flame(c, GOLD[i][0], GOLD[i][1], 5, 9, rgb(255, 190, 60), rgb(255, 240, 160), i + 31);
+        int slot, u;
+        const int fl = lightning_phase(t, 2u, slot, u);
+        if (fl > 0) {                                   // les deux vitraux s'illuminent, un eclair dans celui de gauche
+            const uint16_t k = fl > 4 ? rgb(150, 165, 235) : rgb(80, 90, 150);
+            for (int yy = 36; yy < 108; yy += 2) {       // lumiere « tramee » : une ligne sur deux, le vitrail reste visible
+                fx_rect(c, 33, (float)yy, 29, 1, k);
+                fx_rect(c, 301, (float)yy, 25, 1, k);
+            }
+            if (fl > 2) {
+                fx_line(c, 48, 36, 42, 56, rgb(245, 250, 255)); fx_line(c, 42, 56, 52, 78, rgb(245, 250, 255));
+                fx_line(c, 52, 78, 44, 104, rgb(245, 250, 255));
+            }
+        }
+        break;
+    }
+    default: break;
+    }
+}
+
+// Intensite du flash d'orage sur le ciel (0 = aucun) : Nyxia seulement.
+static int stage_flash(const Match& m) {
+    if (m.f[1].id != NYXIA) return 0;
+    int slot, u;
+    return lightning_phase((int)m.frame, 1u, slot, u);
+}
+
+// -----------------------------------------------------------------------------
 // Décor
 // -----------------------------------------------------------------------------
 static void draw_stage(const Match& m, float cam_x, int shake_x, int shake_y) {
@@ -615,8 +802,24 @@ static void draw_stage(const Match& m, float cam_x, int shake_x, int shake_y) {
     const uint16_t* bg = stage(home);
     const int off = (int)(cam_x * (float)(STAGE_W - SCR_W) / (float)(WORLD_W - SCR_W));   // parallaxe 0..40
 
-    for (int y = 0; y < STAGE_H; ++y)
-        graphics_draw_bitmap565(shake_x, y + shake_y, SCR_W, 1, bg + y * STAGE_W + off, false);
+    // Orage : le ciel s'eclaire (on ajoute de la lumiere aux 100 premieres lignes pendant ~14 images).
+    const int flash = stage_flash(m);
+    static uint16_t sky[SCR_W];
+    for (int y = 0; y < STAGE_H; ++y) {
+        if (flash > 0 && y < 100) {
+            const uint16_t* src = bg + y * STAGE_W + off;
+            const int add = y < 60 ? flash : flash * (100 - y) / 40;   // 8 au pic, estompe vers l'horizon
+            for (int x = 0; x < SCR_W; ++x) {
+                const uint16_t cc = src[x];
+                int r = (cc & 31) + add, g = ((cc >> 5) & 63) + add * 2, b = ((cc >> 11) & 31) + add;
+                r = r > 31 ? 31 : r; g = g > 63 ? 63 : g; b = b > 31 ? 31 : b;
+                sky[x] = (uint16_t)((b << 11) | (g << 5) | r);
+            }
+            graphics_draw_bitmap565(shake_x, y + shake_y, SCR_W, 1, sky, false);
+        } else {
+            graphics_draw_bitmap565(shake_x, y + shake_y, SCR_W, 1, bg + y * STAGE_W + off, false);
+        }
+    }
 
     // Sol : le décor lui-même se prolonge vers le bas, en REFLET assombri (comme un sol poli).
     // La ligne y = STAGE_H reprend exactement la dernière ligne du décor : aucune coupure, aucune
@@ -635,6 +838,8 @@ static void draw_stage(const Match& m, float cam_x, int shake_x, int shake_y) {
         }
         graphics_draw_bitmap565(shake_x, STAGE_H + i + shake_y, SCR_W, 1, line, false);
     }
+
+    fx_stage(m, off, shake_x, shake_y);
 }
 
 // -----------------------------------------------------------------------------

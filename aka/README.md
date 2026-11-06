@@ -73,6 +73,14 @@ sont cherchées à côté de l'exécutable, ou dans `sd/IRONTOURNAMENT`. Audio :
 Options > **Manches** (1, 2 ou 3 à gagner) et **Temps** (30 s, 60 s, 99 s ou illimité), sauvegardées dans `config.dat`
 (un ancien `config.dat` reste lisible). Éventail de Mei-Lin rééquilibré comme dans le prototype web (démarrage 14, actif 14, récupération 11).
 
+## Décors animés
+Chaque décor a ses effets, dessinés par-dessus l'image fixe (`fx_stage` dans `fight_view.cpp`) : **Kyoto** pétales de cerisier et lucioles ;
+**fosse d'obsidienne** torches qui vacillent, braises montantes, scintillement de la lave ; **port de Hong Kong** pluie et rides sur le sol mouillé ;
+**forge** braises du four, étincelles de la coulée, vapeur de la cheminée, neige derrière la baie ; **Atacama** braseros et orage (éclairs +
+éclaircissement du ciel) ; **salle du trône** flammes violettes, torches dorées, vitraux illuminés par l'orage. Les effets sont **sans état**
+(fonction pure de l'horloge du combat, aucun tirage dans le hasard du moteur) : ils ne modifient ni le gameplay ni la synchronisation réseau,
+et coûtent une centaine de petites primitives par image.
+
 ## Jauge de Ki
 Barre bleue sous la vie, conservée d'une manche à l'autre. Gains : +14 en touchant, +8 en encaissant, +6 / +4 en gardant
 (attaquant / défenseur). Dépenses : **EX** à 50 Ki (spécial lancé avec C maintenu + A ou B : dégâts ×1,4, départ plus vif,

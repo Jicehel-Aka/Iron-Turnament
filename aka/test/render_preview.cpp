@@ -26,6 +26,7 @@ static void px(int x,int y,uint16_t c){ if(x>=0&&x<320&&y>=0&&y<240) FB[y][x]=c;
 void graphics_fill_rect_raw(int x,int y,int w,int h,uint16_t c){ for(int j=0;j<h;j++)for(int i=0;i<w;i++)px(x+i,y+j,c); }
 void graphics_draw_rect_raw(int x,int y,int w,int h,uint16_t c){ for(int i=0;i<w;i++){px(x+i,y,c);px(x+i,y+h-1,c);} for(int j=0;j<h;j++){px(x,y+j,c);px(x+w-1,y+j,c);} }
 void graphics_fill_circle_raw(int cx,int cy,int r,uint16_t c){ for(int j=-r;j<=r;j++)for(int i=-r;i<=r;i++) if(i*i+j*j<=r*r+r/2) px(cx+i,cy+j,c); }
+void graphics_draw_line_raw(int x0,int y0,int x1,int y1,uint16_t c){ int dx=abs(x1-x0),sx=x0<x1?1:-1,dy=-abs(y1-y0),sy=y0<y1?1:-1,e=dx+dy; for(;;){ px(x0,y0,c); if(x0==x1&&y0==y1)break; int e2=2*e; if(e2>=dy){e+=dy;x0+=sx;} if(e2<=dx){e+=dx;y0+=sy;} } }
 void graphics_fill_triangle_raw(int x0,int y0,int x1,int y1,int x2,int y2,uint16_t c){
     int minx=std::min({x0,x1,x2}),maxx=std::max({x0,x1,x2}),miny=std::min({y0,y1,y2}),maxy=std::max({y0,y1,y2});
     auto e=[](int ax,int ay,int bx,int by,int cx,int cy){return (bx-ax)*(cy-ay)-(by-ay)*(cx-ax);};
@@ -72,6 +73,20 @@ int main(int argc,char**argv){
         graphics_fill_rect_raw(0,0,320,240,0);
         draw_match(m,0);
         char path[256]; snprintf(path,sizeof path,"%s/%s.ppm",dir,s.name); dump(path);
+    }
+    // decors animes : un instant par decor (le decor est celui du combattant de P2), horloge reglable
+    {
+        const int T[6] = { 300, 520, 400, 777, 133, 126 };   // Nyxia et Malakor : au coeur d un eclair
+        for (int i = 0; i < 6; ++i) {
+            const FighterId host = (FighterId)i, other = (FighterId)((i + 1) % 6);
+            spr::load_pair(other, host);
+            Match m; init_match(m, other, host, false, 7);
+            m.phase = PH_FIGHT; m.banner = BN_NONE; m.frame = T[i];
+            m.f[0].x = 290; m.f[1].x = 340;
+            graphics_fill_rect_raw(0, 0, 320, 240, 0);
+            draw_match(m, 0);
+            char pth[256]; snprintf(pth, sizeof pth, "%s/fx%d.ppm", dir, i); dump(pth);
+        }
     }
     // ecran de selection
     graphics_fill_rect_raw(0,0,320,240,0); draw_select(TITAN,1000,"CHOIX"); char path[256]; snprintf(path,sizeof path,"%s/sel.ppm",dir); dump(path);
