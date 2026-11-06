@@ -53,6 +53,7 @@ static void start(const MatchSetup& s) {
     rules.rounds_to_win = s.rounds_to_win ? s.rounds_to_win : fight::ROUNDS_TO_WIN;
     rules.round_sec     = s.round_sec;
     fight::init_match(s_m, (fight::FighterId)s.player, (fight::FighterId)s.foe, s.boss, esp_random(), rules);
+    fight::set_ai_level(s_m, (fight::Difficulty)s.level);
     // Charge les sprites des deux combattants depuis la SD (~1 s). Echec = dessin vectoriel.
     fight::spr::load_pair((fight::FighterId)s.player, (fight::FighterId)s.foe);
     s_out = OUT_ONGOING;

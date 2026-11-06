@@ -19,27 +19,27 @@ namespace fight {
 
 static const FighterDef DEFS[FIGHTER_COUNT] = {
     // ------------------------------------------------------------------ KENJI
-    { "KENJI", 1000, 62, 60, 58, 60,
+    { "KENJI", 940, 62, 60, 58, 60,
       2.25f, 1.85f, -7.9f,
       {205,211,219}, { 59,130,206}, {224,169,126}, { 56,189,248},
       KROWEN,
       { 76, 0.52f, 0.78f, 0.88f, 0.58f, 0.00f, 0.25f, 0.02f, 0.35f },
       {
-        { "Onde Céleste",     MO_QCF, SC_FWD,   78, 14, 11, 18, 18, SP_PROJECTILE },
-        { "Dragon Ascendant", MO_DP,  SC_UP,   112, 18,  5, 14, 26, SP_ANTI_AIR   },
-        { "Ouragan Ecarlate", MO_QCB, SC_BACK,  94, 16,  9, 20, 17, SP_DASH_STRIKE},
+        { "Onde Céleste",     MO_QCF, SC_FWD,   72, 14, 11, 18, 22, SP_PROJECTILE },
+        { "Dragon Ascendant", MO_DP,  SC_UP,    98, 18,  7, 14, 26, SP_ANTI_AIR   },
+        { "Ouragan Ecarlate", MO_QCB, SC_BACK,  86, 16,  9, 20, 20, SP_DASH_STRIKE},
       },
       { "SCEAU DU VIDE CELESTE", RANGE_ANY, true },
       { 58, 38, 24 }, {124, 45, 18} },
 
     // ----------------------------------------------------------------- KROWEN
-    { "KROWEN", 950, 68, 48, 62, 62,
+    { "KROWEN", 1040, 68, 48, 62, 62,
       2.55f, 2.05f, -8.2f,
       { 30, 41, 59}, {217,119,  6}, {200,155,123}, {249,115, 22},
       KENJI,
       { 54, 0.82f, 0.34f, 0.62f, 0.56f, 0.92f, 0.35f, 0.12f, 0.98f },
       {
-        { "Harpon des Enfers", MO_BF,  SC_FWD,   74, 12, 12, 16, 22, SP_HARPOON  },
+        { "Harpon des Enfers", MO_BF,  SC_FWD,   82, 12, 12, 16, 20, SP_HARPOON  },
         { "Pas de Brume",      MO_QCB, SC_BACK,  86, 14,  8, 10, 21, SP_TELEPORT },
         { "Souffle Calciné",   MO_QCF, SC_UP,    98, 20, 13, 14, 20, SP_OVERHEAD },
       },
@@ -47,7 +47,7 @@ static const FighterDef DEFS[FIGHTER_COUNT] = {
       { 39, 39, 42}, {234, 88, 12} },
 
     // ----------------------------------------------------------------- MEILIN
-    { "MEI-LIN", 940, 54, 52, 52, 70,
+    { "MEI-LIN", 960, 54, 52, 52, 70,
       2.95f, 2.45f, -8.5f,
       {  5,150,105}, {251,191, 36}, {241,194,155}, { 52,211,153},
       MALAKOR,
@@ -67,21 +67,21 @@ static const FighterDef DEFS[FIGHTER_COUNT] = {
       NYXIA,
       { 30, 0.68f, 0.72f, 0.55f, 0.00f, 0.00f, 0.94f, 0.14f, 0.70f },
       {
-        { "Brise-Vertèbres", MO_HCF, SC_FWD,  148,  0,  6, 10, 26, SP_COMMAND_GRAB },
+        { "Brise-Vertèbres", MO_HCF, SC_FWD,  132,  0,  9, 10, 28, SP_COMMAND_GRAB },
         { "Lariat Blindé",   MO_QCB, SC_UP,    92, 18,  7, 22, 22, SP_ANTI_AIR     },
-        { "Séisme d'Oural",  MO_DD,  SC_BACK,  95, 20, 16, 14, 24, SP_QUAKE        },
+        { "Séisme d'Oural",  MO_DD,  SC_BACK,  86, 18, 20, 14, 30, SP_QUAKE        },
       },
       { "SUPLEX ORBITAL ROUGE", RANGE_CLOSE, false },
       { 51, 65, 85}, {245,158, 11} },
 
     // ------------------------------------------------------------------ NYXIA
-    { "NYXIA", 920, 58, 46, 88, 58,
+    { "NYXIA", 960, 58, 46, 88, 58,
       2.30f, 2.35f, -8.0f,
       {146, 64, 14}, {226,232,240}, {198,139, 99}, { 34,211,238},
       TITAN,
       { 118, 0.28f, 0.90f, 0.74f, 0.88f, 0.00f, 0.12f, 0.06f, 0.80f },
       {
-        { "Lance Foudroyante", MO_QCF, SC_FWD,   72, 15, 10, 18, 19, SP_PROJECTILE },
+        { "Lance Foudroyante", MO_QCF, SC_FWD,   82, 15, 10, 18, 17, SP_PROJECTILE },
         { "Sphère de Stase",   MO_QCB, SC_BACK,  68, 16, 14, 45, 18, SP_TRAP_ORB   },
         { "Torpille d'Orage",  MO_BF,  SC_UP,    94, 18,  9, 18, 22, SP_DASH_STRIKE},
       },
@@ -104,6 +104,12 @@ static const FighterDef DEFS[FIGHTER_COUNT] = {
 };
 
 const FighterDef& def(FighterId id) { return DEFS[id]; }
+float g_dmg_scale[3][FIGHTER_COUNT] = {
+    // Kenji, Krowen, Mei-Lin, Titan, Nyxia, Malakor
+    { 0.75f, 1.19f, 0.98f, 1.37f, 0.65f, 1.10f },   // Novice
+    { 0.83f, 0.90f, 0.60f, 1.60f, 1.53f, 1.39f },   // Arcade
+    { 0.80f, 1.22f, 1.05f, 0.98f, 1.10f, 1.11f },   // Maitre (reference, aussi pour le joueur)
+};
 
 void build_ladder(FighterId player, FighterId out[5]) {
     static const FighterId ORDER[FIGHTER_COUNT] = { KENJI, KROWEN, MEILIN, TITAN, NYXIA, MALAKOR };

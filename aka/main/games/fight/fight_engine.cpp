@@ -66,6 +66,7 @@ static void create_fighter(Fighter& f, FighterId id, uint8_t slot, bool boss) {
     const FighterDef& d = def(id);
     std::memset(&f, 0, sizeof f);
     f.id = id;
+    f.dmg_scale = g_dmg_scale[DIFF_MASTER][id];
     f.slot = slot;
     f.max_hp = boss ? (int16_t)std::lround(d.max_hp * 1.12f) : d.max_hp;
     f.hp = f.max_hp;
@@ -93,6 +94,10 @@ void init_match(Match& m, FighterId p1, FighterId p2, bool boss_match, uint32_t 
     m.finisher_done = FIN_NONE;
     create_fighter(m.f[0], p1, 1, false);
     create_fighter(m.f[1], p2, 2, boss_match);
+}
+
+void set_ai_level(Match& m, Difficulty diff) {
+    m.f[1].dmg_scale = g_dmg_scale[diff][m.f[1].id];
 }
 
 void start_next_round(Match& m) {
@@ -318,7 +323,7 @@ static void apply_damage(Match& m, Fighter& atk, Fighter& dfn, int raw, bool kno
     const float def_mitig   = 1.14f - (dd.defense / 100.0f) * 0.26f;
     const float combo_scale = std::fmax(0.55f, 1.0f - dfn.combo_count * 0.12f);
 
-    const int dmg = imax(8, (int)std::lround(raw * power_scale * boss_scale * def_mitig * combo_scale));
+    const int dmg = imax(8, (int)std::lround(raw * power_scale * boss_scale * def_mitig * combo_scale * atk.dmg_scale));
 
     const bool was_attacking =
         dfn.action == A_LIGHT || dfn.action == A_HEAVY || dfn.action == A_LOW_KICK ||
@@ -517,7 +522,7 @@ static void ongoing_special(Match& m, Fighter& f, Fighter& opp) {
 
     // Brise-Vertèbres : prise de commande imblocable.
     if (sp.type == SP_COMMAND_GRAB && f.action_frame == sp.startup && !f.hit_confirmed) {
-        if (std::fabs(f.x - opp.x) <= 50.0f && opp.y >= -14 && opp.invuln <= 0) {
+        if (std::fabs(f.x - opp.x) <= 44.0f && opp.y >= -14 && opp.invuln <= 0) {
             f.hit_confirmed = true;
             apply_damage(m, f, opp, sp.damage, true, true, BN_GRAB);
             sfx(m, SFX_THROW);
@@ -528,7 +533,7 @@ static void ongoing_special(Match& m, Fighter& f, Fighter& opp) {
     if (sp.type == SP_QUAKE && f.action_frame == sp.startup && !f.hit_confirmed) {
         m.shake = 10;
         spawn_particles(m, f.x + f.facing * 28, 202, Rgb{245, 158, 11}, 18, 3.5f, 3);
-        if (std::fabs(f.x - opp.x) <= 105.0f && opp.y >= -4 && opp.invuln <= 0) {
+        if (std::fabs(f.x - opp.x) <= 88.0f && opp.y >= -4 && opp.invuln <= 0) {
             f.hit_confirmed = true;
             resolve_strike(m, f, opp, sp.damage, sp.chip, 1, true, nullptr);
         }
