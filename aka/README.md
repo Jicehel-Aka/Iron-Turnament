@@ -68,6 +68,21 @@ Retour arrière = retour, Échap = menu ; manette SDL reconnue. Les données (`I
 sont cherchées à côté de l'exécutable, ou dans `sd/IRONTOURNAMENT`. Audio : synthèse simple (effets + mélodies).
 `--autotest` rejoue un parcours scripté et enregistre des captures (utilisé en intégration continue).
 
+## Options de match
+Options > **Manches** (1, 2 ou 3 à gagner) et **Temps** (30 s, 60 s, 99 s ou illimité), sauvegardées dans `config.dat`
+(un ancien `config.dat` reste lisible). Éventail de Mei-Lin rééquilibré comme dans le prototype web (démarrage 14, actif 14, récupération 11).
+
+## Cohérence physique des animations
+Audit mesuré sur les planches (`tools/gen_sprites.py` + moteur) :
+- **Marche** : le cycle de pas suit la *distance parcourue* (`walk_dist`) et non l'horloge. Avant, 160 px parcourus pour
+  ~55 px de foulée : les pieds glissaient environ 3 fois trop vite.
+- **Sol** : une image au contact du sol est rognée sous le pivot +4 px (la natte de Krowen, capes et écharpes ne traversent
+  plus le décor : jusqu'à 14 px sous le sol auparavant).
+- **Chute (KNOCKDOWN)** : les 3 images aériennes sont ramenées au sol ; la hauteur n'est plus comptée deux fois (planche + gravité du
+  moteur), plus de saut de ~20 px à l'atterrissage.
+- **Projectiles** : ils partent à hauteur de la main mesurée sur l'image de tir (40 à 46 px selon le combattant, 26 px = la ceinture auparavant).
+- Les vêtements et cheveux sont animés **dans les planches** (dessinés image par image) : le moteur ne fait pas de simulation de tissu.
+
 ## Non repris du prototype web
 Mode histoire / textes de lore, mode 2 joueurs, LED. Les noms de coups restent en français dans
 toutes les langues (ce sont des noms propres).

@@ -32,6 +32,9 @@ S = [
  ('LANG',         "Langue",                "Language",             "Sprache",             "Idioma",              "Lingua"),
  ('MUSIC',        "Musique",               "Music",                "Musik",               "Música",              "Musica"),
  ('SFX',          "Effets",                "Effects",              "Effekte",             "Efectos",             "Effetti"),
+ ('ROUNDS',       "Manches",               "Rounds",               "Runden",              "Rondas",              "Round"),
+ ('TIME_LIMIT',   "Temps",                 "Time",                 "Zeit",                "Tiempo",              "Tempo"),
+ ('UNLIMITED',    "illimité",              "unlimited",            "endlos",              "ilimitado",           "illimitato"),
  ('ZOOM',         "Zoom",                  "Zoom",                 "Zoom",                "Zoom",                "Zoom"),
  ('FULLSCREEN',   "Plein écran",           "Fullscreen",           "Vollbild",            "Pantalla completa",  "Schermo intero"),
  ('CALIB',        "Recalibrer joystick",   "Recalibrate joystick", "Joystick kalibrieren","Calibrar joystick",   "Calibra joystick"),
@@ -105,9 +108,9 @@ S = [
 # --- REGLES : une chaine par ligne (38 colonnes MAX) ------------------------------
 RULES = {
  'FIGHT': [
-  ("Deux manches gagnantes. 99 secondes",  "Win two rounds. 99 seconds",          "Zwei Runden gewinnen. 99 Sekunden",   "Gana dos asaltos. 99 segundos",      "Vinci due round. 99 secondi"),
-  ("par manche : a zero, le plus en",      "per round: at zero, whoever has",     "pro Runde: bei null gewinnt, wer",    "por asalto: a cero gana quien",      "a round: a zero vince chi ha"),
-  ("forme gagne aux points.",              "more health wins on points.",         "mehr Leben hat.",                     "tenga más vida.",                    "più energia."),
+  ("Gagne le nombre de manches choisi",   "Win the number of rounds set in",     "Gewinne die eingestellten Runden.",   "Gana los asaltos fijados en",        "Vinci i round impostati in Opzioni."),
+  ("(Options). A zero, le plus en forme",  "Options. At zero time, whoever has",  "Bei Zeitablauf gewinnt, wer",         "Opciones. Al acabar el tiempo gana", "Allo scadere vince chi ha più"),
+  ("gagne aux points.",                    "more health wins on points.",         "mehr Leben hat.",                     "quien tenga más vida.",              "energia."),
   ("",                                     "",                                    "",                                    "",                                   ""),
   ("Parez en reculant : garde haute",      "Hold back to block: high guard",      "Zurück halten blockt: hohe Deckung", "Retrocede para parar: guardia alta", "Indietro per parare: guardia alta"),
   ("(debout) ou basse (accroupi).",        "(standing) or low (crouching).",      "(stehend) oder tiefe (geduckt).",     "(de pie) o baja (agachado).",        "(in piedi) o bassa (accosciato)."),

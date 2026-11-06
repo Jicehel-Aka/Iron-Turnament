@@ -37,10 +37,13 @@ bool load(Config& c) {
     char kCfg[300]; cfg_path(kCfg, sizeof kCfg);
     FILE* f = fopen(kCfg, "rb");
     if (!f) return false;
-    File d {};
-    const bool ok = fread(&d, sizeof d, 1, f) == 1;
+    // Tolere un fichier plus ancien (moins de champs) : les champs absents gardent leur valeur par defaut.
+    File d { 0, c };
+    const size_t n = fread(&d, 1, sizeof d, f);
     fclose(f);
-    if (!ok || d.magic != MAGIC) return false;
+    if (n < sizeof(uint32_t) + 6 || d.magic != MAGIC) return false;
+    if (d.cfg.rounds < 1 || d.cfg.rounds > 3) d.cfg.rounds = 2;
+    if (d.cfg.time_idx > 3) d.cfg.time_idx = 2;
     c = d.cfg;
     return true;
 }

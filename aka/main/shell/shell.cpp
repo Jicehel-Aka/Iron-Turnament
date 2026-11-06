@@ -102,12 +102,16 @@ static void go_menu() { audio_play_tune(Tune::Title); s_sel = 0; s_state = State
 // -----------------------------------------------------------------------------
 // Combat
 // -----------------------------------------------------------------------------
+static const int kTimes[3] = { 30, 60, 99 };   // time_idx 3 = illimitee (0 s dans MatchSetup)
+
 static void start_bout() {
     MatchSetup s;
     s.player = s_player;
     s.foe    = s_foe;
     s.boss   = (s_mode == Mode::Tournament && s_bout == 4);
     s.level  = s_cfg.level;
+    s.rounds_to_win = s_cfg.rounds;
+    s.round_sec     = s_cfg.time_idx >= 3 ? 0 : kTimes[s_cfg.time_idx];
     s_game->start(s);
     audio_play_tune(Tune::Game);
     s_state = State::Playing;
@@ -153,7 +157,7 @@ static void draw_menu_screen() {
 // -----------------------------------------------------------------------------
 // Options
 // -----------------------------------------------------------------------------
-enum OptItem { OI_LEVEL = 0, OI_LANG, OI_MUSIC, OI_SFX, OI_ZOOM, OI_CALIB, OI_BACK };
+enum OptItem { OI_LEVEL = 0, OI_ROUNDS, OI_TIME, OI_LANG, OI_MUSIC, OI_SFX, OI_ZOOM, OI_CALIB, OI_BACK };
 
 static const i18n::StrId LVL[3] = { i18n::STR_LVL_1, i18n::STR_LVL_2, i18n::STR_LVL_3 };
 
@@ -163,7 +167,7 @@ static int clamp_vol(int v) { return v < 0 ? 0 : (v > 100 ? 100 : v); }
 // le recalibrage du joystick que sur la console.
 static int option_list(int* out) {
     int n = 0;
-    out[n++] = OI_LEVEL; out[n++] = OI_LANG; out[n++] = OI_MUSIC; out[n++] = OI_SFX;
+    out[n++] = OI_LEVEL; out[n++] = OI_ROUNDS; out[n++] = OI_TIME; out[n++] = OI_LANG; out[n++] = OI_MUSIC; out[n++] = OI_SFX;
     if (graphics_zoom_supported()) out[n++] = OI_ZOOM; else out[n++] = OI_CALIB;
     out[n++] = OI_BACK;
     return n;
@@ -172,12 +176,14 @@ static int option_list(int* out) {
 static void apply_zoom() { if (graphics_zoom_supported()) graphics_set_zoom(s_cfg.zoom); }
 
 static void update_options() {
-    int items[8];
+    int items[10];
     const int n = option_list(items);
     const int dir = (input_repeat(Button::Right) ? 1 : 0) - (input_repeat(Button::Left) ? 1 : 0);
     if (dir) {
         switch (items[s_sel]) {
             case OI_LEVEL: s_cfg.level = (uint8_t)((s_cfg.level + 3 + dir) % 3); break;
+            case OI_ROUNDS: s_cfg.rounds = (uint8_t)((s_cfg.rounds - 1 + 3 + dir) % 3 + 1); break;
+            case OI_TIME:   s_cfg.time_idx = (uint8_t)((s_cfg.time_idx + 4 + dir) % 4); break;
             case OI_LANG: {
                 const int l = ((int)s_cfg.language + i18n::LANG_COUNT + dir) % i18n::LANG_COUNT;
                 s_cfg.language = (uint8_t)l;
@@ -202,13 +208,18 @@ static void update_options() {
 }
 
 static void draw_options_screen() {
-    int items[8];
+    int items[10];
     const int n = option_list(items);
-    static char l[8][40];
+    static char l[10][40];
     const char* ptr[10] = {};
     for (int i = 0; i < n; ++i) {
         switch (items[i]) {
             case OI_LEVEL: snprintf(l[i], 40, "%-9s < %s >", i18n::T(i18n::STR_LEVEL), i18n::T(LVL[s_cfg.level < 3 ? s_cfg.level : 1])); break;
+            case OI_ROUNDS: snprintf(l[i], 40, "%-9s < %d >", i18n::T(i18n::STR_ROUNDS), s_cfg.rounds); break;
+            case OI_TIME:
+                if (s_cfg.time_idx >= 3) snprintf(l[i], 40, "%-9s < %s >", i18n::T(i18n::STR_TIME_LIMIT), i18n::T(i18n::STR_UNLIMITED));
+                else                     snprintf(l[i], 40, "%-9s < %d s >", i18n::T(i18n::STR_TIME_LIMIT), kTimes[s_cfg.time_idx]);
+                break;
             case OI_LANG:  snprintf(l[i], 40, "%-9s < %s >", i18n::T(i18n::STR_LANG),  i18n::lang_name((i18n::Lang)s_cfg.language)); break;
             case OI_MUSIC: snprintf(l[i], 40, "%-9s < %d%% >", i18n::T(i18n::STR_MUSIC), s_cfg.music_vol); break;
             case OI_SFX:   snprintf(l[i], 40, "%-9s < %d%% >", i18n::T(i18n::STR_SFX),   s_cfg.sfx_vol); break;

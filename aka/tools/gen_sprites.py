@@ -34,6 +34,17 @@ CELL_W, CELL_H, COLS, ROWS = 128, 112, 6, 23
 PIVOT_X, PIVOT_Y = 60, 98
 KEY = 0xF81F
 
+# --- Coherence physique (corrections appliquees a la conversion, cf. README) ----------------
+# Contact au sol : le sol ne peut pas etre traverse. Dans une image ou le combattant touche le sol
+# (bas du cadre >= 1 px sous le pivot), tout pixel plus bas que GROUND_CLIP est retire : la natte de
+# Krowen, une cape ou une echarpe reposent sur le sol au lieu de pendre 12 px dans le decor.
+GROUND_CLIP = 4
+# Chute (ligne KNOCKDOWN, colonnes 0-2) : la planche montait deja le corps de 12-16 px alors que le
+# moteur simule l'arc de la chute (gravite) : la hauteur etait comptee deux fois et l'image sautait
+# de ~20 px a l'atterrissage. On ramene le point le plus bas de ces images au sol : l'arc ne vient
+# plus que du moteur.
+ROW_KNOCKDOWN = 20
+
 def to_bgr565(rgb):
     r = (rgb[..., 0] >> 3).astype(np.uint16)
     g = (rgb[..., 1] >> 2).astype(np.uint16)
@@ -63,8 +74,20 @@ def convert(png, out):
             if len(ys) == 0:
                 table.append((0, 0, 0, 0, 0)); continue
             ya, yb, xa, xb = ys.min(), ys.max() + 1, xs.min(), xs.max() + 1
+            shift = 0
+            if r == ROW_KNOCKDOWN and c < 3:
+                shift = (PIVOT_Y + 1) - yb          # bas de l'image -> 1 px sous le pivot
+            elif yb - PIVOT_Y >= 1:                              # image au contact du sol
+                limit = PIVOT_Y + GROUND_CLIP
+                if yb > limit:
+                    yb = limit
+                    cell_fg2 = cell_fg[:yb, :]
+                    ys2, xs2 = np.where(cell_fg2)
+                    ya, xa, xb = ys2.min(), xs2.min(), xs2.max() + 1
             data = px[y0 + ya:y0 + yb, x0 + xa:x0 + xb]
-            table.append((xb - xa, yb - ya, int(xa) - PIVOT_X, int(ya) - PIVOT_Y, base + len(blob)))
+            if yb <= ya or xb <= xa:
+                table.append((0, 0, 0, 0, 0)); continue
+            table.append((xb - xa, yb - ya, int(xa) - PIVOT_X, int(ya) - PIVOT_Y + shift, base + len(blob)))
             blob += data.tobytes()
     head = b'ISPR' + struct.pack('<HHHH', 1, n, COLS, 0)
     tab = b''.join(struct.pack('<HHhhI', *t) for t in table)

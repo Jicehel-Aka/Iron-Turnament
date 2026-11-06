@@ -305,14 +305,24 @@ static int oneshot_col(const Fighter& f) {
     return c < 0 ? 0 : imin_(c, 5);
 }
 
+// Longueur d'une foulee complete de la planche (mesuree : ecart max des pieds ~37 px, pas ~27 px
+// -> 2 pas ~ 55 px). Ancien reglage : cycle a l'horloge = 160 px parcourus pour 55 px de foulee.
+static constexpr float WALK_CYCLE_PX = 56.0f;
+static int walk_col(const Fighter& f) {
+    int c = (int)(f.walk_dist * 6.0f / WALK_CYCLE_PX);
+    return c % 6;
+}
+
 static bool sprite_cell(const Fighter& f, const FighterDef& d, int now, int& row, int& col, int& y_adj) {
     using namespace spr;
     y_adj = 0;
     const int af = f.action_frame;
     switch (f.action) {
     case A_IDLE:       row = R_IDLE;      col = (now / 10) % 6; break;
-    case A_WALK_FWD:   row = R_WALK_FWD;  col = (now / 6) % 6;  break;
-    case A_WALK_BACK:  row = R_WALK_BACK; col = (now / 6) % 6;  break;
+    // Cycle de pas pilote par la DISTANCE parcourue (et non par l'horloge) : le pied d'appui reste
+    // plante au sol (pas de glissement). Une foulee complete (6 images, 2 pas) couvre WALK_CYCLE_PX.
+    case A_WALK_FWD:   row = R_WALK_FWD;  col = walk_col(f); break;
+    case A_WALK_BACK:  row = R_WALK_BACK; col = walk_col(f); break;
     case A_CROUCH:     row = R_CROUCH;    col = 2; break;
     case A_JUMP: {
         row = R_JUMP; y_adj = 10;                      // la planche monte deja le sauteur de ~10 px
@@ -647,8 +657,8 @@ static void draw_bar(int x, int y, int w, int h, const Fighter& f, bool right_to
     }
 }
 
-static void draw_win_pips(int x, int y, int wins, bool right_to_left) {
-    for (int i = 0; i < ROUNDS_TO_WIN; ++i) {
+static void draw_win_pips(int x, int y, int wins, int rounds, bool right_to_left) {
+    for (int i = 0; i < rounds; ++i) {
         const int px = right_to_left ? x - i * 10 : x + i * 10;
         const bool on = i < wins;
         graphics_fill_circle_raw(px, y, 3, graphics_make_color(10, 8, 14));
@@ -720,15 +730,16 @@ static void draw_hud(const Match& m) {
 
     graphics_draw_text_raw(34, 21, da.short_name, ui::C_TEXT);
     graphics_draw_text_raw(SCR_W - 34 - graphics_text_width(db.short_name), 21, db.short_name, ui::C_TEXT);
-    draw_win_pips(34 + graphics_text_width(da.short_name) + 10, 25, m.wins[0], false);
-    draw_win_pips(SCR_W - 34 - graphics_text_width(db.short_name) - 10, 25, m.wins[1], true);
+    draw_win_pips(34 + graphics_text_width(da.short_name) + 10, 25, m.wins[0], m.rounds_to_win, false);
+    draw_win_pips(SCR_W - 34 - graphics_text_width(db.short_name) - 10, 25, m.wins[1], m.rounds_to_win, true);
 
     // Chrono.
     char t[16];
-    snprintf(t, sizeof t, "%02d", (int)((m.timer_frames + 59) / 60));
+    if (m.round_sec == 0) snprintf(t, sizeof t, "--");
+    else snprintf(t, sizeof t, "%02d", (int)((m.timer_frames + 59) / 60));
     graphics_fill_rect_raw(SCR_W / 2 - 17, 3, 34, 26, graphics_make_color(24, 20, 36));
     graphics_draw_rect_raw(SCR_W / 2 - 17, 3, 34, 26, graphics_make_color(240, 176, 64));
-    graphics_draw_text_center_raw(11, t, m.timer_frames < 10 * 60 ? graphics_make_color(239, 68, 68) : ui::C_TEXT);
+    graphics_draw_text_center_raw(11, t, (m.round_sec != 0 && m.timer_frames < 10 * 60) ? graphics_make_color(239, 68, 68) : ui::C_TEXT);
 }
 
 static void draw_banner(const Match& m) {

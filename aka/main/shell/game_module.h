@@ -24,6 +24,8 @@ struct MatchSetup {
     uint8_t foe;       // FighterId de l'adversaire (P2, pilote par l'IA)
     bool    boss;      // duel final du Tournoi : le boss a 12 % de vitalite en plus
     uint8_t level;     // 0 = Novice, 1 = Arcade, 2 = Maitre
+    uint8_t rounds_to_win{2};   // manches a gagner (1, 2 ou 3)
+    uint16_t round_sec{99};     // duree d'une manche en secondes ; 0 = illimitee
 };
 
 struct GameModule {

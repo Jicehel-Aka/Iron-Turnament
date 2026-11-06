@@ -53,7 +53,7 @@ static const FighterDef DEFS[FIGHTER_COUNT] = {
       MALAKOR,
       { 44, 0.86f, 0.42f, 0.65f, 0.48f, 0.00f, 0.30f, 0.04f, 0.65f },
       {
-        { "Eventail d'Acier",  MO_BF,  SC_FWD,   66, 12,  9, 16, 14, SP_PROJECTILE  },
+        { "Eventail d'Acier",  MO_BF,  SC_FWD,   66, 12, 14, 14, 11, SP_PROJECTILE  },
         { "Cent Eclairs",      MO_QCF, SC_BACK,  96, 22,  7, 22, 16, SP_DASH_STRIKE },
         { "Flèche du Phénix",  MO_DU,  SC_UP,    90, 16, 10, 18, 18, SP_OVERHEAD    },
       },

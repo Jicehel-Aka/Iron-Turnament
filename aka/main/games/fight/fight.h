@@ -30,7 +30,7 @@ constexpr float MIN_X     = 36.0f;
 constexpr float MAX_X     = WORLD_W - 36.0f;
 constexpr float MAX_SEP   = 268.0f;     // distance maxi entre les deux combattants
 constexpr float GRAVITY   = 0.46f;
-constexpr int   ROUND_SEC = 99;
+constexpr int   ROUND_SEC = 99;          // valeurs par defaut ; reglables par match (MatchRules)
 constexpr int   ROUNDS_TO_WIN = 2;
 
 float camera_left_x(float p1x, float p2x);
@@ -145,6 +145,7 @@ struct Fighter {
     DirEntry  hist[16];
     uint8_t   hist_len;
     int16_t   ai_cooldown;
+    float     walk_dist;          // distance cumulee a la marche : pilote le cycle de pas (pas de glissement)
 };
 
 enum ProjKind : uint8_t { PK_KI_WAVE, PK_HARPOON, PK_STEEL_FAN, PK_LIGHTNING, PK_STASIS_ORB, PK_DARK_WAVE };
@@ -229,9 +230,17 @@ struct Match {
     Habits    habits;                // habitudes de P1, lues par l'IA
     uint32_t  rng;
     uint16_t  sfx;                   // evenements sonores accumules
+    uint8_t   rounds_to_win;         // 1, 2 ou 3 (option)
+    uint16_t  round_sec;             // duree d'une manche en secondes ; 0 = illimitee (option)
 };
 
-void init_match(Match& m, FighterId p1, FighterId p2, bool boss_match, uint32_t seed);
+// Reglages d'un match (options du jeu).
+struct MatchRules {
+    uint8_t  rounds_to_win = ROUNDS_TO_WIN;   // 1, 2 ou 3
+    uint16_t round_sec     = ROUND_SEC;       // 30, 60, 99 ; 0 = pas de limite de temps
+};
+void init_match(Match& m, FighterId p1, FighterId p2, bool boss_match, uint32_t seed,
+                const MatchRules& rules = MatchRules());
 void start_next_round(Match& m);
 
 // UNE image logique a 60 Hz. `p1_in` : entrees du joueur. P2 est pilote par l'IA.
