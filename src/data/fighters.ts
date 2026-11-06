@@ -14,7 +14,7 @@ export const FIGHTERS: Record<FighterId, FighterDefinition> = {
     origin: 'Kyoto, Japon',
     fightingStyle: 'Karaté Shotokan Purifié',
     archetype: 'Équilibré (Shoto)',
-    portraitUrl: '/src/assets/images/portrait_pro_kenji_1793786555822.jpg',
+    portraitUrl: '/src/assets/images/kenji_portrait_new_1793977786823.jpg',
     portraitCropClass: 'object-cover object-center',
     primaryColor: '#F1F5F9',   // Gi blanc
     secondaryColor: '#DC2626', // Bandeau écarlate
@@ -143,7 +143,7 @@ export const FIGHTERS: Record<FighterId, FighterDefinition> = {
     origin: 'Fosse d’Obsidienne',
     fightingStyle: 'Ninjutsu des Abysses',
     archetype: 'Traqueur (Mix-up)',
-    portraitUrl: '/src/assets/images/portrait_pro_krowen_1793786557508.jpg',
+    portraitUrl: '/src/assets/images/krowen_portrait_clean_1793977821112.jpg',
     portraitCropClass: 'object-cover object-center',
     primaryColor: '#1E293B',   // Armure obsidienne
     secondaryColor: '#D97706', // Or terni & braise
