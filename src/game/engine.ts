@@ -10,6 +10,8 @@ import {
   MatchEngineState,
   ParticleEntity,
   ProjectileEntity,
+  RoundDurationOption,
+  RoundsToWinOption,
   SpecialMoveDef,
 } from '../types/game';
 import { computePersonalityAI } from './aiController';
@@ -69,17 +71,22 @@ function createFighterRuntime(
 export function createInitialMatchState(
   p1Id: FighterId,
   p2Id: FighterId,
-  isFinalBossMatch = false
+  isFinalBossMatch = false,
+  roundsToWin: RoundsToWinOption = 2,
+  roundDurationSec: RoundDurationOption = 99
 ): MatchEngineState {
   const p1 = createFighterRuntime(p1Id, 1, false);
   const p2 = createFighterRuntime(p2Id, 2, isFinalBossMatch);
+  const timerFrames = roundDurationSec === 0 ? 999999 : roundDurationSec * 60;
 
   return {
     frame: 0,
     roundNumber: 1,
     p1Wins: 0,
     p2Wins: 0,
-    timerFrames: 99 * 60,
+    roundsToWin,
+    roundDurationSec,
+    timerFrames,
     hitstopFrames: 0,
     screenShake: 0,
     darkSkyFlash: 0,
@@ -110,9 +117,10 @@ export function startNextRound(state: MatchEngineState): void {
   const p1Ki = Math.min(100, state.p1.ki);
   const p2Ki = Math.min(100, state.p2.ki);
   const bossBoost = state.p2.isBossBoosted;
+  const timerFrames = state.roundDurationSec === 0 ? 999999 : state.roundDurationSec * 60;
 
   state.roundNumber = nextRound;
-  state.timerFrames = 99 * 60;
+  state.timerFrames = timerFrames;
   state.hitstopFrames = 0;
   state.screenShake = 0;
   state.darkSkyFlash = 0;
@@ -361,7 +369,25 @@ function spawnSpecialProjectile(
   const def = FIGHTERS[fighter.id];
   const dir = fighter.facing;
   const startX = fighter.x + dir * 24;
-  const startY = fighter.y - 26;
+  let startY = fighter.y - 36;
+
+  // Hauteur exacte du point d'éjection selon le combattant et la posture de frappe
+  if (fighter.id === 'nyxia' && spec.type === 'PROJECTILE') {
+    // Lance Foudroyante : la boule se forme et s'éjecte du poing levé à hauteur d'épaule
+    startY = fighter.y - 42;
+  } else if (fighter.id === 'nyxia' && spec.type === 'TRAP_ORB') {
+    startY = fighter.y - 38;
+  } else if (fighter.id === 'meilin') {
+    // Éventail d'Acier : éjection au niveau de la main tendue
+    startY = fighter.y - 38;
+  } else if (fighter.id === 'kenji') {
+    // Onde Céleste : double poussée des paumes au niveau du plexus
+    startY = fighter.y - 36;
+  } else if (fighter.id === 'krowen') {
+    startY = fighter.y - 37;
+  } else if (fighter.id === 'malakor') {
+    startY = fighter.y - 38;
+  }
 
   if (fighter.slot === 1) {
     state.p1Habits.projectilesThrown++;

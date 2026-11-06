@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Volume2, VolumeX, Pause, Play, RotateCcw, Home } from 'lucide-react';
-import { soundFX } from '../audio/soundEngine';
+import { Volume2, VolumeX, Pause, Play, RotateCcw, Home, Settings, Sliders, Radio } from 'lucide-react';
+import { MusicTheme, soundFX } from '../audio/soundEngine';
 import { FIGHTERS, FIGHTER_ORDER, buildStoryLadder } from '../data/fighters';
 import {
   ARENA_HEIGHT,
@@ -11,15 +11,20 @@ import {
 } from '../game/engine';
 import { renderMatchToCanvas } from '../game/pixelRenderer';
 import {
+  DEFAULT_GAME_OPTIONS,
   Difficulty,
   FighterId,
   GameMode,
+  GameOptions,
   InputSnapshot,
   MatchEngineState,
   RenderEngineMode,
+  RoundDurationOption,
+  RoundsToWinOption,
   ScreenPhase,
 } from '../types/game';
 import { FighterPortrait } from './FighterPortrait';
+import { SoundTestStudio } from './SoundTestStudio';
 
 interface GamebuinoConsoleWorkspaceProps {
   gameMode: GameMode;
@@ -100,10 +105,22 @@ export const GamebuinoConsoleWorkspace: React.FC<GamebuinoConsoleWorkspaceProps>
     p2Spec: false,
   });
 
+  const [options, setOptions] = useState<GameOptions>(() => {
+    try {
+      const stored = localStorage.getItem('iron_tournament_options');
+      if (stored) {
+        return { ...DEFAULT_GAME_OPTIONS, ...JSON.parse(stored), difficulty, renderMode };
+      }
+    } catch {
+      // Ignoré
+    }
+    return { ...DEFAULT_GAME_OPTIONS, difficulty, renderMode };
+  });
+
   const [storyLadder, setStoryLadder] = useState<FighterId[]>(() => buildStoryLadder(p1Id));
   const [storyStageIndex, setStoryStageIndex] = useState<number>(0);
   const [selectedStageId, setSelectedStageId] = useState<FighterId>('kenji');
-  const [soundOn, setSoundOn] = useState<boolean>(true);
+  const [soundOn, setSoundOn] = useState<boolean>(options.soundEnabled);
   const [ledColors, setLedColors] = useState<string[]>(Array(8).fill('#1E293B'));
   const [aiLiveThought, setAiLiveThought] = useState<string>('En attente du gong');
   const [matchResult, setMatchResult] = useState<{
@@ -112,23 +129,110 @@ export const GamebuinoConsoleWorkspace: React.FC<GamebuinoConsoleWorkspaceProps>
     quote: string;
   } | null>(null);
 
+  // Synchronisation des options vers les moteurs Audio et Stockage
+  const updateOption = useCallback(
+    <K extends keyof GameOptions>(key: K, val: GameOptions[K]) => {
+      setOptions((prev) => {
+        const next = { ...prev, [key]: val };
+        try {
+          localStorage.setItem('iron_tournament_options', JSON.stringify(next));
+        } catch {
+          // Ignoré
+        }
+        if (key === 'soundEnabled') {
+          setSoundOn(Boolean(val));
+          soundFX.setEnabled(Boolean(val));
+        } else if (key === 'bgmVolume') {
+          soundFX.setBgmVolume(Number(val));
+        } else if (key === 'sfxVolume') {
+          soundFX.setSfxVolume(Number(val));
+        } else if (key === 'difficulty') {
+          setDifficulty(val as Difficulty);
+        } else if (key === 'renderMode') {
+          setRenderMode(val as RenderEngineMode);
+        }
+        return next;
+      });
+    },
+    [setDifficulty, setRenderMode]
+  );
+
   const toggleSound = () => {
     const next = !soundOn;
     setSoundOn(next);
-    soundFX.setEnabled(next);
+    updateOption('soundEnabled', next);
   };
+
+  // Synchronisation dynamique de la musique par scène (BGM)
+  useEffect(() => {
+    if (!options.soundEnabled) {
+      soundFX.stopMusic();
+      return;
+    }
+    soundFX.setBgmVolume(options.bgmVolume);
+    soundFX.setSfxVolume(options.sfxVolume);
+
+    if (phase === 'SOUND_TEST') {
+      return;
+    }
+
+    let targetTheme: MusicTheme = 'SILENCE';
+
+    switch (phase) {
+      case 'TITLE_MENU':
+      case 'OPTIONS_MENU':
+        targetTheme = 'TITLE';
+        break;
+      case 'CHARACTER_SELECT':
+        targetTheme = 'SELECT';
+        break;
+      case 'PRE_MATCH_DIALOGUE':
+        targetTheme = 'VERSUS';
+        break;
+      case 'PLAYING':
+      case 'PAUSED': {
+        const stage = FIGHTERS[selectedStageId]?.stage?.id;
+        if (stage === 'kyoto_dojo') targetTheme = 'STAGE_DOJO';
+        else if (stage === 'obsidian_pit') targetTheme = 'STAGE_PIT';
+        else if (stage === 'hk_harbor') targetTheme = 'STAGE_HARBOR';
+        else if (stage === 'siberia_foundry') targetTheme = 'STAGE_FOUNDRY';
+        else if (stage === 'atacama_sanctuary') targetTheme = 'STAGE_SANCTUARY';
+        else if (stage === 'brass_citadel') targetTheme = 'STAGE_CITADEL';
+        else targetTheme = 'STAGE_DOJO';
+        break;
+      }
+      case 'ROUND_SUMMARY':
+      case 'STORY_ENDING':
+        targetTheme = 'VICTORY';
+        break;
+      case 'GAME_OVER':
+        targetTheme = 'GAME_OVER';
+        break;
+      default:
+        targetTheme = 'TITLE';
+        break;
+    }
+
+    soundFX.playMusic(targetTheme);
+  }, [phase, selectedStageId, options.soundEnabled, options.bgmVolume, options.sfxVolume]);
 
   // Démarre un combat (Histoire ou Versus)
   const launchMatch = useCallback(
     (fighter1: FighterId, fighter2: FighterId, isBoss = false, stageOwnerId?: FighterId) => {
       setSelectedStageId(stageOwnerId || fighter2);
-      engineRef.current = createInitialMatchState(fighter1, fighter2, isBoss);
+      engineRef.current = createInitialMatchState(
+        fighter1,
+        fighter2,
+        isBoss,
+        options.roundsToWin,
+        options.roundDuration
+      );
       setMatchResult(null);
       setAiLiveThought('Observation initiale');
       setPhase('PLAYING');
       soundFX.menuConfirm();
     },
-    [setPhase]
+    [setPhase, options.roundsToWin, options.roundDuration]
   );
 
   const beginStoryCampaign = (chosenId: FighterId) => {
@@ -265,10 +369,11 @@ export const GamebuinoConsoleWorkspace: React.FC<GamebuinoConsoleWorkspaceProps>
 
           stepMatchEngine(state, p1Input, p2Input, difficulty);
 
-          // Transition automatique fin de manche / fin de match
+          // Transition automatique fin de manche / fin de match selon options.roundsToWin
           if (state.roundSubPhase === 'ROUND_END' && state.p1.actionFrame > 72) {
-            if (state.p1Wins >= 2 || state.p2Wins >= 2) {
-              const winSlot: 1 | 2 = state.p1Wins >= 2 ? 1 : 2;
+            const neededWins = state.roundsToWin || 2;
+            if (state.p1Wins >= neededWins || state.p2Wins >= neededWins) {
+              const winSlot: 1 | 2 = state.p1Wins >= neededWins ? 1 : 2;
               const winFighter = FIGHTERS[winSlot === 1 ? state.p1.id : state.p2.id];
               const quote =
                 winFighter.winQuotes[
@@ -289,11 +394,15 @@ export const GamebuinoConsoleWorkspace: React.FC<GamebuinoConsoleWorkspaceProps>
 
         if (canvasRef.current) {
           const stage = FIGHTERS[selectedStageId].stage;
-          renderMatchToCanvas(canvasRef.current, state, stage, renderMode);
+          renderMatchToCanvas(canvasRef.current, state, stage, renderMode, options.scanlines);
         }
 
         if (state.frame % 6 === 0) {
-          setLedColors([...state.ledColors]);
+          if (options.chassisLeds) {
+            setLedColors([...state.ledColors]);
+          } else {
+            setLedColors(Array(8).fill('#0F172A'));
+          }
           if (gameMode !== 'VERSUS_2P') {
             setAiLiveThought(state.p2.aiThought);
           }
@@ -305,7 +414,7 @@ export const GamebuinoConsoleWorkspace: React.FC<GamebuinoConsoleWorkspaceProps>
 
     rafId = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(rafId);
-  }, [phase, gameMode, difficulty, renderMode, selectedStageId, setPhase]);
+  }, [phase, gameMode, difficulty, renderMode, selectedStageId, setPhase, options.scanlines, options.chassisLeds]);
 
   const setVirtualKey = (field: keyof PressedKeysState, pressed: boolean) => {
     keysRef.current[field] = pressed;
@@ -422,6 +531,23 @@ export const GamebuinoConsoleWorkspace: React.FC<GamebuinoConsoleWorkspaceProps>
 
                 <button
                   type="button"
+                  onClick={() => {
+                    soundFX.menuMove();
+                    setPhase(phase === 'OPTIONS_MENU' ? 'TITLE_MENU' : 'OPTIONS_MENU');
+                  }}
+                  title="Options & Réglages"
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-xs transition-colors cursor-pointer ${
+                    phase === 'OPTIONS_MENU'
+                      ? 'bg-rose-600 border-rose-500 text-white'
+                      : 'bg-slate-900 hover:bg-slate-800 border-slate-700 text-slate-300'
+                  }`}
+                >
+                  <Settings className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Options</span>
+                </button>
+
+                <button
+                  type="button"
                   onClick={() => setPhase('TITLE_MENU')}
                   className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-slate-900 hover:bg-slate-800 border border-slate-700 text-xs text-slate-300 transition-colors cursor-pointer"
                 >
@@ -466,44 +592,343 @@ export const GamebuinoConsoleWorkspace: React.FC<GamebuinoConsoleWorkspaceProps>
                       </p>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setGameMode('STORY');
-                          soundFX.menuConfirm();
-                          setPhase('CHARACTER_SELECT');
-                        }}
-                        className="py-3 px-4 bg-rose-600 hover:bg-rose-500 text-white text-xs sm:text-sm font-semibold rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer"
-                      >
-                        Mode Histoire
-                      </button>
+                    <div className="space-y-2 pt-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setGameMode('STORY');
+                            soundFX.menuConfirm();
+                            setPhase('CHARACTER_SELECT');
+                          }}
+                          className="py-3 px-4 bg-rose-600 hover:bg-rose-500 text-white text-xs sm:text-sm font-semibold rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+                        >
+                          Mode Histoire
+                        </button>
 
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setGameMode('VERSUS_CPU');
-                          soundFX.menuConfirm();
-                          setPhase('CHARACTER_SELECT');
-                        }}
-                        className="py-3 px-4 bg-slate-800 hover:bg-slate-700 text-slate-100 text-xs sm:text-sm font-semibold rounded-lg border border-slate-700 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
-                      >
-                        Versus vs IA
-                      </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setGameMode('VERSUS_CPU');
+                            soundFX.menuConfirm();
+                            setPhase('CHARACTER_SELECT');
+                          }}
+                          className="py-3 px-4 bg-slate-800 hover:bg-slate-700 text-slate-100 text-xs sm:text-sm font-semibold rounded-lg border border-slate-700 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+                        >
+                          Versus vs IA
+                        </button>
 
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setGameMode('VERSUS_2P');
+                            soundFX.menuConfirm();
+                            setPhase('CHARACTER_SELECT');
+                          }}
+                          className="py-3 px-4 bg-slate-800 hover:bg-slate-700 text-slate-100 text-xs sm:text-sm font-semibold rounded-lg border border-slate-700 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+                        >
+                          Versus 2 Joueurs
+                        </button>
+                      </div>
+
+                      <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            soundFX.menuMove();
+                            setPhase('SOUND_TEST');
+                          }}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-rose-300 hover:text-white bg-rose-950/40 hover:bg-rose-900/60 border border-rose-500/50 rounded-lg transition-colors cursor-pointer"
+                        >
+                          <Radio className="w-3.5 h-3.5 text-rose-400 animate-pulse" />
+                          <span>Juke-box & Musiques (12 Thèmes Chiptune)</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            soundFX.menuMove();
+                            setPhase('OPTIONS_MENU');
+                          }}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:text-white bg-slate-900/90 hover:bg-slate-800 border border-slate-700 rounded-lg transition-colors cursor-pointer"
+                        >
+                          <Settings className="w-3.5 h-3.5 text-amber-400" />
+                          <span>Options du jeu (Règles, Audio & Rendu)</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 1B. ÉCRAN DES OPTIONS & CONFIGURATION (Audio, Bruitages, Règles, Graphismes) */}
+                {phase === 'OPTIONS_MENU' && (
+                  <div className="w-full h-full flex flex-col justify-between p-4 sm:p-5 bg-[#0A0D15] overflow-y-auto select-none">
+                    <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                      <div className="flex items-center gap-2">
+                        <Sliders className="w-4 h-4 text-amber-400" />
+                        <h2 className="font-display text-xl sm:text-2xl font-bold text-white">
+                          Options & Configuration AKA
+                        </h2>
+                      </div>
                       <button
                         type="button"
                         onClick={() => {
-                          setGameMode('VERSUS_2P');
+                          soundFX.menuCancel();
+                          setPhase('TITLE_MENU');
+                        }}
+                        className="py-1 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold rounded-lg border border-slate-700 cursor-pointer"
+                      >
+                        Retour Titre
+                      </button>
+                    </div>
+
+                    <div className="space-y-3.5 my-2 text-xs">
+                      {/* Section Audio : BGM & SFX & Muet */}
+                      <div className="bg-slate-900/80 border border-slate-800 rounded-lg p-3 space-y-2.5">
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-slate-200">Audio Général :</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              soundFX.menuMove();
+                              updateOption('soundEnabled', !options.soundEnabled);
+                            }}
+                            className={`px-3 py-1 text-xs font-semibold rounded-md border transition-colors cursor-pointer ${
+                              options.soundEnabled
+                                ? 'bg-emerald-600 border-emerald-500 text-white'
+                                : 'bg-slate-800 border-slate-700 text-slate-400'
+                            }`}
+                          >
+                            {options.soundEnabled ? 'Activé (On)' : 'Muet (Off)'}
+                          </button>
+                        </div>
+
+                        {/* Volume Musique BGM par scène */}
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between text-slate-300">
+                            <span>Musique de scène (BGM) :</span>
+                            <span className="font-mono text-amber-400">{options.bgmVolume}%</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="0"
+                            max="100"
+                            step="5"
+                            value={options.bgmVolume}
+                            onChange={(e) => updateOption('bgmVolume', Number(e.target.value))}
+                            className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-500"
+                          />
+                        </div>
+
+                        {/* Volume Bruitages SFX */}
+                        <div className="space-y-1">
+                          <div className="flex items-center justify-between text-slate-300">
+                            <span>Bruitages de coups & impacts (SFX) :</span>
+                            <span className="font-mono text-rose-400">{options.sfxVolume}%</span>
+                          </div>
+                          <input
+                            type="range"
+                            min="0"
+                            max="100"
+                            step="5"
+                            value={options.sfxVolume}
+                            onChange={(e) => updateOption('sfxVolume', Number(e.target.value))}
+                            className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-rose-500"
+                          />
+                        </div>
+
+                        <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between">
+                          <span className="text-slate-300">Écoute & Test des musiques :</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              soundFX.menuMove();
+                              setPhase('SOUND_TEST');
+                            }}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white font-semibold rounded-md transition-colors cursor-pointer text-xs"
+                          >
+                            <Radio className="w-3.5 h-3.5" />
+                            <span>Ouvrir le Juke-box AKA</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Section Règles de Combat : Manches gagnantes & Durée chrono */}
+                      <div className="bg-slate-900/80 border border-slate-800 rounded-lg p-3 space-y-2.5">
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-slate-200">Manches gagnantes :</span>
+                          <div className="flex items-center gap-1">
+                            {([1, 2, 3] as RoundsToWinOption[]).map((r) => (
+                              <button
+                                key={r}
+                                type="button"
+                                onClick={() => {
+                                  soundFX.menuMove();
+                                  updateOption('roundsToWin', r);
+                                }}
+                                className={`px-2.5 py-1 text-xs font-mono font-semibold rounded-md border transition-colors cursor-pointer ${
+                                  options.roundsToWin === r
+                                    ? 'bg-rose-600 border-rose-500 text-white'
+                                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                                }`}
+                              >
+                                {r} {r === 1 ? 'manche' : 'manches'}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-slate-200">Chronomètre de manche :</span>
+                          <div className="flex items-center gap-1">
+                            {([60, 99, 0] as RoundDurationOption[]).map((dur) => (
+                              <button
+                                key={dur}
+                                type="button"
+                                onClick={() => {
+                                  soundFX.menuMove();
+                                  updateOption('roundDuration', dur);
+                                }}
+                                className={`px-2.5 py-1 text-xs font-mono font-semibold rounded-md border transition-colors cursor-pointer ${
+                                  options.roundDuration === dur
+                                    ? 'bg-amber-600 border-amber-500 text-white'
+                                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                                }`}
+                              >
+                                {dur === 0 ? 'Infini' : `${dur}s`}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-slate-200">Niveau par défaut de l'IA :</span>
+                          <div className="flex items-center gap-1">
+                            {(['NOVICE', 'ARCADE', 'MAITRE'] as Difficulty[]).map((lvl) => (
+                              <button
+                                key={lvl}
+                                type="button"
+                                onClick={() => {
+                                  soundFX.menuMove();
+                                  updateOption('difficulty', lvl);
+                                }}
+                                className={`px-2 py-1 text-xs font-semibold rounded-md border transition-colors cursor-pointer ${
+                                  options.difficulty === lvl
+                                    ? 'bg-sky-600 border-sky-500 text-white'
+                                    : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
+                                }`}
+                              >
+                                {lvl === 'NOVICE' ? 'Novice' : lvl === 'ARCADE' ? 'Arcade' : 'Maître'}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Section Affichage & Rendu : Moteur, Scanlines & LEDs */}
+                      <div className="bg-slate-900/80 border border-slate-800 rounded-lg p-3 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-slate-200">Moteur de Rendu :</span>
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                soundFX.menuMove();
+                                updateOption('renderMode', 'SPRITE_2D_PRO');
+                              }}
+                              className={`px-2.5 py-1 text-xs font-semibold rounded-md border transition-colors cursor-pointer ${
+                                options.renderMode !== 'FULL_3D_PRO'
+                                  ? 'bg-amber-500 border-amber-400 text-slate-950'
+                                  : 'bg-slate-950 border-slate-800 text-slate-400'
+                              }`}
+                            >
+                              Sprites 2D Pro (DMA)
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                soundFX.menuMove();
+                                updateOption('renderMode', 'FULL_3D_PRO');
+                              }}
+                              className={`px-2.5 py-1 text-xs font-semibold rounded-md border transition-colors cursor-pointer ${
+                                options.renderMode === 'FULL_3D_PRO'
+                                  ? 'bg-amber-500 border-amber-400 text-slate-950'
+                                  : 'bg-slate-950 border-slate-800 text-slate-400'
+                              }`}
+                            >
+                              3D Volumétrique
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <span className="text-slate-300">Filtre Scanlines CRT :</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              soundFX.menuMove();
+                              updateOption('scanlines', !options.scanlines);
+                            }}
+                            className={`px-3 py-1 text-xs font-semibold rounded-md border transition-colors cursor-pointer ${
+                              options.scanlines
+                                ? 'bg-amber-600 border-amber-500 text-white'
+                                : 'bg-slate-950 border-slate-800 text-slate-400'
+                            }`}
+                          >
+                            {options.scanlines ? 'Actif' : 'Désactivé'}
+                          </button>
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <span className="text-slate-300">LEDs RVB du boîtier :</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              soundFX.menuMove();
+                              updateOption('chassisLeds', !options.chassisLeds);
+                            }}
+                            className={`px-3 py-1 text-xs font-semibold rounded-md border transition-colors cursor-pointer ${
+                              options.chassisLeds
+                                ? 'bg-emerald-600 border-emerald-500 text-white'
+                                : 'bg-slate-950 border-slate-800 text-slate-400'
+                            }`}
+                          >
+                            {options.chassisLeds ? 'Actives' : 'Éteintes'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-2 border-t border-slate-800 text-[11px] text-slate-400">
+                      <span>Les options sont automatiquement sauvegardées en mémoire locale.</span>
+                      <button
+                        type="button"
+                        onClick={() => {
                           soundFX.menuConfirm();
                           setPhase('CHARACTER_SELECT');
                         }}
-                        className="py-3 px-4 bg-slate-800 hover:bg-slate-700 text-slate-100 text-xs sm:text-sm font-semibold rounded-lg border border-slate-700 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+                        className="py-1.5 px-4 bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold rounded-lg cursor-pointer"
                       >
-                        Versus 2 Joueurs
+                        Sélection des Combattants
                       </button>
                     </div>
                   </div>
+                )}
+
+                {/* 1C. ÉCRAN JUKE-BOX & TEST AUDIO */}
+                {phase === 'SOUND_TEST' && (
+                  <SoundTestStudio
+                    onBack={() => {
+                      soundFX.menuCancel();
+                      setPhase('TITLE_MENU');
+                    }}
+                    bgmVolume={options.bgmVolume}
+                    sfxVolume={options.sfxVolume}
+                    onUpdateBgmVolume={(val) => updateOption('bgmVolume', val)}
+                    onUpdateSfxVolume={(val) => updateOption('sfxVolume', val)}
+                    soundEnabled={options.soundEnabled}
+                    onToggleSoundEnabled={() => updateOption('soundEnabled', !options.soundEnabled)}
+                  />
                 )}
 
                 {/* 2. SÉLECTION DES COMBATTANTS */}
@@ -750,17 +1175,27 @@ export const GamebuinoConsoleWorkspace: React.FC<GamebuinoConsoleWorkspaceProps>
                           </button>
                           <button
                             type="button"
+                            onClick={() => {
+                              soundFX.menuMove();
+                              setPhase('OPTIONS_MENU');
+                            }}
+                            className="py-2 px-4 bg-slate-800 hover:bg-slate-700 text-amber-400 text-xs font-semibold rounded-lg border border-slate-700 cursor-pointer"
+                          >
+                            Options du Jeu
+                          </button>
+                          <button
+                            type="button"
                             onClick={() => launchMatch(p1Id, p2Id, false, selectedStageId)}
                             className="py-2 px-4 bg-slate-800 hover:bg-slate-700 text-slate-100 text-xs font-semibold rounded-lg cursor-pointer"
                           >
-                            Recommencer le Match
+                            Recommencer
                           </button>
                           <button
                             type="button"
                             onClick={() => setPhase('CHARACTER_SELECT')}
                             className="py-2 px-4 bg-slate-800 hover:bg-slate-700 text-slate-100 text-xs font-semibold rounded-lg cursor-pointer"
                           >
-                            Changer de Combattant
+                            Combattants
                           </button>
                         </div>
                       </div>

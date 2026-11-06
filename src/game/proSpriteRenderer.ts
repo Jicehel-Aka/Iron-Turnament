@@ -1168,37 +1168,39 @@ function drawShoulderDetail(
     const ramp = buildSmoothRamp('#D97706', dim);
     ctx.fillStyle = ramp.contour;
     ctx.beginPath();
-    ctx.arc(s.x, s.y - 1, 6.0, 0, Math.PI * 2);
+    ctx.arc(s.x, s.y - 0.4, 5.0, 0, Math.PI * 2);
     ctx.fill();
 
-    const pGrad = ctx.createRadialGradient(s.x - 1.5, s.y - 3, 0.6, s.x, s.y - 1, 5.4);
+    const pGrad = ctx.createRadialGradient(s.x - 1.0, s.y - 2.0, 0.5, s.x, s.y - 0.4, 4.6);
     pGrad.addColorStop(0, ramp.specular);
     pGrad.addColorStop(0.55, ramp.mid);
     pGrad.addColorStop(1, ramp.deepShadow);
     ctx.fillStyle = pGrad;
     ctx.beginPath();
-    ctx.arc(s.x, s.y - 1, 5.3, 0, Math.PI * 2);
+    ctx.arc(s.x, s.y - 0.4, 4.4, 0, Math.PI * 2);
     ctx.fill();
 
-    // Lame d'épaulière segmentée + corne d'ivoire
+    // Lame d'épaulière segmentée impériale
     ctx.strokeStyle = '#78350F';
     ctx.lineWidth = 0.75;
     ctx.beginPath();
-    ctx.arc(s.x, s.y - 0.5, 4.4, 0.15, Math.PI - 0.15);
+    ctx.arc(s.x, s.y, 3.6, 0.15, Math.PI - 0.15);
     ctx.stroke();
 
+    // Corne d'ivoire galbée orientée vers l'extérieur (sans empiéter sur le menton ou le cou)
+    const hornDir = isFront ? 1.0 : -1.0;
     ctx.fillStyle = '#FEF3C7';
     ctx.beginPath();
-    ctx.moveTo(s.x - 2.6, s.y - 4);
-    ctx.quadraticCurveTo(s.x + (isFront ? -5.2 : 5.2), s.y - 7.6, s.x + (isFront ? -5.8 : 5.8), s.y - 9.8);
-    ctx.lineTo(s.x + 0.8, s.y - 4.8);
+    ctx.moveTo(s.x - hornDir * 1.5, s.y - 3.2);
+    ctx.quadraticCurveTo(s.x + hornDir * 2.8, s.y - 5.2, s.x + hornDir * 3.8, s.y - 6.5);
+    ctx.lineTo(s.x + hornDir * 0.8, s.y - 3.6);
     ctx.closePath();
     ctx.fill();
 
     if (isFront) {
       ctx.fillStyle = '#E879F9';
-      ctx.fillRect(s.x - 1.5, s.y - 1.9, 1.6, 1.6);
-      ctx.fillRect(s.x + 1.1, s.y - 1.9, 1.6, 1.6);
+      ctx.fillRect(s.x - 1.2, s.y - 1.2, 1.4, 1.4);
+      ctx.fillRect(s.x + 0.8, s.y - 1.2, 1.4, 1.4);
     }
   } else if (f.id === 'nyxia' || f.id === 'krowen') {
     const ramp = buildSmoothRamp('#B45309', dim);
@@ -1247,9 +1249,26 @@ function drawTorsoAndArmor(
 
   const isTitan = f.id === 'titan';
   const isMalakor = f.id === 'malakor';
-  const hipHalf = isTitan ? 9.0 : isMalakor ? 7.8 : f.id === 'meilin' ? 5.8 : 6.4;
-  const waistHalf = isTitan ? 8.4 : isMalakor ? 7.0 : f.id === 'meilin' ? 5.0 : 5.7;
-  const chestHalf = isTitan ? 12.8 : isMalakor ? 11.0 : f.id === 'meilin' ? 7.5 : 9.0;
+  const hipHalf =
+    f.id === 'titan' ? 9.8 :
+    f.id === 'malakor' ? 8.2 :
+    f.id === 'kenji' ? 6.5 :
+    f.id === 'nyxia' ? 6.2 :
+    f.id === 'krowen' ? 5.8 : 5.4;
+
+  const waistHalf =
+    f.id === 'titan' ? 9.0 :
+    f.id === 'malakor' ? 7.6 :
+    f.id === 'kenji' ? 5.8 :
+    f.id === 'nyxia' ? 5.0 :
+    f.id === 'krowen' ? 5.2 : 4.6;
+
+  const chestHalf =
+    f.id === 'titan' ? 13.5 :
+    f.id === 'malakor' ? 11.5 :
+    f.id === 'kenji' ? 9.2 :
+    f.id === 'krowen' ? 8.4 :
+    f.id === 'nyxia' ? 7.8 : 7.2;
 
   const torsoBase = isTitan ? def.skinColor : def.primaryColor;
 
@@ -1474,37 +1493,17 @@ function drawTorsoAndArmor(
     skGrad.addColorStop(0.68, qipaoRamp.mid);
     skGrad.addColorStop(1, qipaoRamp.deepShadow);
 
-    // Doublure intérieure carmin visible dans la fente latérale du Qipao
+    // Doublure intérieure carmin visible dans la fente latérale du Qipao (couche d'arrière-plan sous les jambes)
     if (apronBottomY > pel.y + 4) {
       ctx.fillStyle = '#991B1B';
       ctx.beginPath();
-      ctx.moveTo(pel.x - 5.2, pel.y + 0.5);
-      ctx.lineTo(pel.x - 1.8, pel.y + 0.5);
-      ctx.lineTo(pel.x - 3.6 + skirtWave * 0.25, apronBottomY - 1.2);
-      ctx.lineTo(pel.x - 6.0 + skirtWave * 0.2, apronBottomY - 2.4);
+      ctx.moveTo(pel.x - 4.5, pel.y + 0.5);
+      ctx.lineTo(pel.x - 1.2, pel.y + 0.5);
+      ctx.lineTo(pel.x - 2.8, apronBottomY - 1.2);
+      ctx.lineTo(pel.x - 5.2, apronBottomY - 2.4);
       ctx.closePath();
       ctx.fill();
     }
-
-    // Pan frontal brodé d'or du Qipao impérial
-    ctx.fillStyle = skGrad;
-    ctx.beginPath();
-    ctx.moveTo(pel.x - 4.8, pel.y - 1);
-    ctx.lineTo(pel.x + 5.3, pel.y - 1);
-    ctx.quadraticCurveTo(
-      pel.x + 7.1,
-      (pel.y + apronBottomY) * 0.5,
-      pel.x + 7.2 + skirtWave * 0.85,
-      apronBottomY - 0.6
-    );
-    ctx.lineTo(pel.x + 1.0 + skirtWave * 0.45, apronBottomY);
-    ctx.lineTo(pel.x - 4.6 + skirtWave * 0.28, Math.min(floorRestY, apronBottomY - 1.6));
-    ctx.closePath();
-    ctx.fill();
-
-    ctx.strokeStyle = '#FBBF24';
-    ctx.lineWidth = 1.05;
-    ctx.stroke();
 
     // Col Mandarin + ouverture diagonale + 3 brandebourgs dorés (Pankou)
     ctx.strokeStyle = '#FBBF24';
@@ -1523,42 +1522,40 @@ function drawTorsoAndArmor(
       ctx.arc(bx, by, 0.72, 0, Math.PI * 2);
       ctx.fill();
     }
-
-    // Ceinture de soie vermillon + ruban latéral flottant
-    const sashGrad = ctx.createLinearGradient(pel.x, pel.y - 2.6, pel.x, pel.y + 1.5);
-    sashGrad.addColorStop(0, '#FCA5A5');
-    sashGrad.addColorStop(0.4, '#EF4444');
-    sashGrad.addColorStop(1, '#991B1B');
-    ctx.fillStyle = sashGrad;
-    ctx.beginPath();
-    ctx.roundRect(pel.x - 5.9, pel.y - 2.6, 11.8, 3.8, 1.1);
-    ctx.fill();
-
-    ctx.fillStyle = '#DC2626';
-    ctx.beginPath();
-    ctx.arc(pel.x - 4.6, pel.y - 0.6, 1.9, 0, Math.PI * 2);
-    ctx.fill();
   } else if (isTitan) {
     // Anatomie lourde sculptée : plaques pectorales, sillon sternal et abdominaux (sans trait noir dur)
     const skinRamp = buildSmoothRamp(def.skinColor, 1.0);
+    const torsoFacing = Math.cos(pose.spinY ?? 0);
 
-    // Reflets supérieurs des pectoraux
-    ctx.fillStyle = skinRamp.specular;
-    ctx.beginPath();
-    ctx.ellipse(chs.x - 3.4, chs.y - 2.4, 3.4, 1.5, -0.15, 0, Math.PI * 2);
-    ctx.ellipse(chs.x + 4.2, chs.y - 2.4, 3.8, 1.6, 0.15, 0, Math.PI * 2);
-    ctx.fill();
+    if (torsoFacing > 0.05) {
+      // Reflets supérieurs des pectoraux positionnés rigoureusement sur le torse antérieur (zéro reflet dorsal)
+      ctx.fillStyle = skinRamp.specular;
+      ctx.beginPath();
+      ctx.ellipse(chs.x - 0.6, chs.y - 2.4, 2.6, 1.4, -0.12, 0, Math.PI * 2);
+      ctx.ellipse(chs.x + 4.4, chs.y - 2.4, 3.6, 1.5, 0.12, 0, Math.PI * 2);
+      ctx.fill();
 
-    // Ombre sous-pectorale et ligne blanche abdominale
-    ctx.strokeStyle = skinRamp.deepShadow;
-    ctx.lineWidth = 1.05;
-    ctx.beginPath();
-    ctx.moveTo(chs.x - 7.2, chs.y + 0.6);
-    ctx.quadraticCurveTo(chs.x - 3.0, chs.y + 2.3, chs.x + 0.6, chs.y + 0.7);
-    ctx.quadraticCurveTo(chs.x + 4.6, chs.y + 2.4, chs.x + 9.0, chs.y + 0.5);
-    ctx.moveTo(chs.x + 0.6, chs.y - 3.6);
-    ctx.lineTo(wst.x + 0.6, wst.y + 1.8);
-    ctx.stroke();
+      // Ombre sous-pectorale et ligne blanche abdominale
+      ctx.strokeStyle = skinRamp.deepShadow;
+      ctx.lineWidth = 1.05;
+      ctx.beginPath();
+      ctx.moveTo(chs.x - 5.5, chs.y + 0.8);
+      ctx.quadraticCurveTo(chs.x - 2.2, chs.y + 2.2, chs.x + 0.6, chs.y + 0.7);
+      ctx.quadraticCurveTo(chs.x + 4.6, chs.y + 2.4, chs.x + 8.8, chs.y + 0.5);
+      ctx.moveTo(chs.x + 0.6, chs.y - 3.6);
+      ctx.lineTo(wst.x + 0.6, wst.y + 1.8);
+      ctx.stroke();
+    } else {
+      // Vue dorsale pendant la rotation 360° : trapèzes et grand dorsal sans reflets pectoraux
+      ctx.strokeStyle = skinRamp.deepShadow;
+      ctx.lineWidth = 0.95;
+      ctx.beginPath();
+      ctx.moveTo(chs.x, chs.y - 4.5);
+      ctx.lineTo(chs.x, wst.y);
+      ctx.moveTo(chs.x - 5.0, chs.y - 2.0);
+      ctx.quadraticCurveTo(chs.x, chs.y - 0.5, chs.x + 5.0, chs.y - 2.0);
+      ctx.stroke();
+    }
 
     // Sangles de fonderie rivetées + réacteur thermique incandescent au plexus
     ctx.strokeStyle = '#451A03';
@@ -1633,27 +1630,11 @@ function drawTorsoAndArmor(
     ctx.lineWidth = 0.95;
     ctx.stroke();
 
-    // Tassettes latérales de bronze et pagne runique turquoise
-    const loinY = Math.min(floorRestY, pel.y + 11.4);
+    // Base de la ceinture de bronze (le pagne frontal d'Atacama est dessiné en premier plan)
     ctx.fillStyle = '#92400E';
     ctx.beginPath();
     ctx.roundRect(pel.x - hipHalf - 0.2, pel.y - 2.2, hipHalf * 2 + 0.4, 3.6, 0.9);
     ctx.fill();
-
-    if (loinY > pel.y + 2.0) {
-      ctx.fillStyle = nyxGrad;
-      ctx.beginPath();
-      ctx.moveTo(pel.x - 3.2, pel.y - 1.0);
-      ctx.lineTo(pel.x + 4.0, pel.y - 1.0);
-      ctx.lineTo(pel.x + 2.5, loinY);
-      ctx.lineTo(pel.x + 0.4, loinY + 0.6);
-      ctx.lineTo(pel.x - 2.1, loinY);
-      ctx.closePath();
-      ctx.fill();
-      ctx.strokeStyle = '#FBBF24';
-      ctx.lineWidth = 0.95;
-      ctx.stroke();
-    }
 
     // Cœur runique stellaire ardent + conduits bio-électriques
     ctx.fillStyle = '#06B6D4';
@@ -1773,10 +1754,19 @@ function drawDetailedHead(
   );
   ctx.fill();
 
-  // 2) Silhouette extérieure ciselée du visage 3/4 (front, arête du nez, menton volontaire)
+  // 2) Orientation 3D continue de la tête (rotation Y continue sur 360°)
+  // faceFacing : +1.0 (profil droit franc), 0.0 (face caméra), -1.0 (vue arrière complète)
+  const faceFacing = Math.cos(pose.spinY ?? 0);
+  const frontFactor = Math.max(0, Math.min(1, (faceFacing + 0.18) / 0.78));
+  const backFactor = Math.max(0, Math.min(1, (-faceFacing + 0.22) / 0.78));
+  const noseExtend = Math.max(0, Math.min(1.0, faceFacing));
+
+  // Silhouette extérieure ciselée : transition progressive entre profil 3/4 et crâne occipital galbé
   const traceHeadPath = (inflate: number) => {
     ctx.beginPath();
-    ctx.moveTo(hd.x - 5.6 - inflate, hd.y - 3.4);
+    // Saillie progressive du nez qui rentre harmonieusement dans le crâne quand la tête pivote vers l'arrière
+    const noseProtrusion = (5.0 + 1.85 * noseExtend) * frontFactor + 5.6 * (1 - frontFactor);
+    ctx.moveTo(hd.x - 5.6 - inflate - backFactor * 0.4, hd.y - 3.4);
     ctx.quadraticCurveTo(
       hd.x - 6.0 - inflate,
       hd.y - 7.2 - inflate,
@@ -1786,16 +1776,16 @@ function drawDetailedHead(
     ctx.quadraticCurveTo(
       hd.x + 5.9 + inflate,
       hd.y - 6.8 - inflate,
-      hd.x + 6.1 + inflate,
+      hd.x + (5.6 + 0.5 * frontFactor) + inflate,
       hd.y - 1.5
     );
-    // Saillie nette du nez 3/4
-    ctx.lineTo(hd.x + 6.85 + inflate, hd.y + 0.65);
-    ctx.lineTo(hd.x + 6.15 + inflate, hd.y + 1.45);
+    // Saillie nette du nez 3/4 profilée selon l'angle de rotation Y, disparaissant de dos
+    ctx.lineTo(hd.x + noseProtrusion + inflate, hd.y + 0.65);
+    ctx.lineTo(hd.x + (5.6 + 0.55 * frontFactor) + inflate, hd.y + 1.45);
     ctx.quadraticCurveTo(
-      hd.x + 6.0 + inflate,
+      hd.x + (5.5 + 0.5 * frontFactor) + inflate,
       hd.y + 4.8 + inflate,
-      hd.x + 4.5,
+      hd.x + (3.8 + 0.7 * frontFactor),
       hd.y + 5.35 + inflate
     );
     ctx.quadraticCurveTo(
@@ -1811,8 +1801,15 @@ function drawDetailedHead(
   traceHeadPath(0.60);
   ctx.fill();
 
-  // Dégradé facial multi-plans (front, pommette éclairée, joue et mâchoire)
-  const faceGrad = ctx.createRadialGradient(hd.x + 2.3, hd.y - 2.1, 0.9, hd.x + 0.4, hd.y + 0.2, 7.8);
+  // Dégradé facial multi-plans fluide (dérive progressivement selon l'angle de rotation Y)
+  const faceGrad = ctx.createRadialGradient(
+    hd.x + 2.3 * faceFacing - 1.2 * backFactor,
+    hd.y - 2.1,
+    0.9,
+    hd.x + 0.4 * faceFacing,
+    hd.y + 0.2,
+    7.6
+  );
   faceGrad.addColorStop(0.0, skinRamp.specular);
   faceGrad.addColorStop(0.42, skinRamp.light);
   faceGrad.addColorStop(0.76, skinRamp.mid);
@@ -1822,35 +1819,43 @@ function drawDetailedHead(
   traceHeadPath(0);
   ctx.fill();
 
-  // Éclat de pommette zygomatique et arête lumineuse du nez
-  if (f.id !== 'malakor') {
+  // Éclat de pommette zygomatique et arête lumineuse du nez (fondu progressif)
+  if (frontFactor > 0.05 && f.id !== 'malakor') {
+    ctx.save();
+    ctx.globalAlpha = frontFactor;
     ctx.fillStyle = skinRamp.specular;
     ctx.beginPath();
-    ctx.ellipse(hd.x + 2.1, hd.y + 0.55, 1.35, 0.7, -0.2, 0, Math.PI * 2);
+    ctx.ellipse(hd.x + 2.1 * frontFactor, hd.y + 0.55, 1.35 * frontFactor, 0.7, -0.2, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.strokeStyle = skinRamp.specular;
     ctx.lineWidth = 0.65;
     ctx.beginPath();
-    ctx.moveTo(hd.x + 5.3, hd.y - 1.6);
-    ctx.lineTo(hd.x + 6.5, hd.y + 0.55);
+    ctx.moveTo(hd.x + 3.8 + 1.5 * frontFactor, hd.y - 1.6);
+    ctx.lineTo(hd.x + 4.6 + 1.9 * frontFactor, hd.y + 0.55);
     ctx.stroke();
 
     ctx.fillStyle = skinRamp.deepShadow;
     ctx.beginPath();
-    ctx.arc(hd.x + 5.5, hd.y + 1.15, 0.55, 0, Math.PI * 2);
+    ctx.arc(hd.x + 4.0 + 1.5 * frontFactor, hd.y + 1.15, 0.55 * frontFactor, 0, Math.PI * 2);
     ctx.fill();
+    ctx.restore();
   }
 
-  // Oreille sculptée (pavillon + conque interne)
-  ctx.fillStyle = skinRamp.halftone;
-  ctx.beginPath();
-  ctx.ellipse(hd.x - 2.6, hd.y + 0.4, 1.15, 1.85, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = skinRamp.deepShadow;
-  ctx.beginPath();
-  ctx.ellipse(hd.x - 2.5, hd.y + 0.45, 0.55, 1.0, 0, 0, Math.PI * 2);
-  ctx.fill();
+  // Oreille sculptée (pavillon + conque interne, visible de profil et s'estompant de face/dos)
+  if (frontFactor > 0.08) {
+    ctx.save();
+    ctx.globalAlpha = frontFactor;
+    ctx.fillStyle = skinRamp.halftone;
+    ctx.beginPath();
+    ctx.ellipse(hd.x - 2.6 * faceFacing, hd.y + 0.4, 1.15, 1.85, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = skinRamp.deepShadow;
+    ctx.beginPath();
+    ctx.ellipse(hd.x - 2.5 * faceFacing, hd.y + 0.45, 0.55, 1.0, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
 
   // États expressifs dynamiques selon l'animation en cours
   const isKO = f.action === 'DEFEAT';
@@ -1871,107 +1876,124 @@ function drawDetailedHead(
   const isPowerGlow =
     f.action.startsWith('SPECIAL') || f.action === 'FINISHER' || f.action === 'TAUNT';
 
-  // Arcade sourcilière expressive
-  ctx.strokeStyle = '#0F172A';
-  ctx.lineWidth = 1.0;
-  ctx.beginPath();
-  if (isPain) {
-    ctx.moveTo(hd.x + 1.1, hd.y - 2.5);
-    ctx.lineTo(hd.x + 5.2, hd.y - 1.5);
-  } else if (isFierce) {
-    ctx.moveTo(hd.x + 1.0, hd.y - 2.3);
-    ctx.lineTo(hd.x + 5.4, hd.y - 1.65);
-  } else {
-    ctx.moveTo(hd.x + 1.2, hd.y - 2.1);
-    ctx.lineTo(hd.x + 5.2, hd.y - 1.9);
-  }
-  ctx.stroke();
+  // 3) Traits faciaux expressifs (arcade sourcilière, regard, bouche) : fondu 3D progressif
+  if (frontFactor > 0.05) {
+    ctx.save();
+    ctx.globalAlpha = frontFactor;
 
-  // Regard (fermé en K.O., plissé sous l'impact, étincelant en attaque spéciale)
-  if (isKO && f.id !== 'malakor') {
+    // Arcade sourcilière expressive
     ctx.strokeStyle = '#0F172A';
-    ctx.lineWidth = 0.95;
+    ctx.lineWidth = 1.0;
     ctx.beginPath();
-    ctx.moveTo(hd.x + 1.8, hd.y - 0.9);
-    ctx.quadraticCurveTo(hd.x + 3.4, hd.y - 0.3, hd.x + 4.9, hd.y - 0.95);
-    ctx.stroke();
-  } else {
-    const eyeGlow =
-      f.id === 'krowen'
-        ? '#FACC15'
-        : f.id === 'malakor'
-        ? '#E879F9'
-        : f.id === 'nyxia'
-        ? '#67E8F9'
-        : '#F8FAFC';
-
-    ctx.fillStyle = eyeGlow;
-    ctx.beginPath();
-    ctx.ellipse(
-      hd.x + 3.35,
-      hd.y - 0.9,
-      1.65,
-      isPain ? 0.62 : 0.88,
-      0,
-      0,
-      Math.PI * 2
-    );
-    ctx.fill();
-
-    if (f.id !== 'krowen' && f.id !== 'malakor' && f.id !== 'nyxia') {
-      ctx.fillStyle = isPowerGlow ? def.accentColor : '#0F172A';
-      ctx.beginPath();
-      ctx.arc(hd.x + 3.95, hd.y - 0.9, 0.74, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Éclat cornéen blanc pur (donne vie au regard en pixel-art)
-      ctx.fillStyle = '#FFFFFF';
-      ctx.beginPath();
-      ctx.arc(hd.x + 3.65, hd.y - 1.15, 0.34, 0, Math.PI * 2);
-      ctx.fill();
+    if (isPain) {
+      ctx.moveTo(hd.x + 0.5 + 0.6 * frontFactor, hd.y - 2.5);
+      ctx.lineTo(hd.x + 1.2 + 4.0 * frontFactor, hd.y - 1.5);
+    } else if (isFierce) {
+      ctx.moveTo(hd.x + 0.5 + 0.5 * frontFactor, hd.y - 2.3);
+      ctx.lineTo(hd.x + 1.2 + 4.2 * frontFactor, hd.y - 1.65);
+    } else {
+      ctx.moveTo(hd.x + 0.5 + 0.7 * frontFactor, hd.y - 2.1);
+      ctx.lineTo(hd.x + 1.2 + 4.0 * frontFactor, hd.y - 1.9);
     }
-  }
+    ctx.stroke();
 
-  // Expressions buccales (visages découverts : Kenji, Mei-Lin, Titan, Nyxia)
-  if (f.id !== 'krowen' && f.id !== 'malakor') {
-    const mouthY = f.id === 'titan' ? hd.y + 2.4 : hd.y + 2.65;
-    if (isFierce) {
-      // Cri martial Kiai : bouche ouverte + éclat des dents supérieures
-      ctx.fillStyle = '#450A0A';
+    // Regard (fermé en K.O., plissé sous l'impact, étincelant en attaque spéciale)
+    if (isKO && f.id !== 'malakor') {
+      ctx.strokeStyle = '#0F172A';
+      ctx.lineWidth = 0.95;
       ctx.beginPath();
-      ctx.roundRect(hd.x + 3.2, mouthY - 0.55, 2.5, 1.75, 0.55);
-      ctx.fill();
-      ctx.fillStyle = '#F8FAFC';
-      ctx.fillRect(hd.x + 3.4, mouthY - 0.45, 2.0, 0.65);
-    } else if (isPain) {
-      // Grimace dents serrées sous le choc
-      ctx.fillStyle = '#0F172A';
-      ctx.beginPath();
-      ctx.roundRect(hd.x + 2.8, mouthY - 0.45, 2.8, 1.4, 0.4);
-      ctx.fill();
-      ctx.fillStyle = '#F8FAFC';
-      ctx.fillRect(hd.x + 3.0, mouthY - 0.2, 2.3, 0.9);
-    } else if (f.action === 'VICTORY') {
-      // Sourire confiant de vainqueur
-      ctx.strokeStyle = skinRamp.contour;
-      ctx.lineWidth = 0.78;
-      ctx.beginPath();
-      ctx.moveTo(hd.x + 2.7, mouthY - 0.1);
-      ctx.quadraticCurveTo(hd.x + 4.1, mouthY + 0.55, hd.x + 5.4, mouthY - 0.2);
+      ctx.moveTo(hd.x + 1.8 * frontFactor, hd.y - 0.9);
+      ctx.quadraticCurveTo(hd.x + 3.4 * frontFactor, hd.y - 0.3, hd.x + 4.9 * frontFactor, hd.y - 0.95);
       ctx.stroke();
     } else {
-      // Ligne labiale martiale déterminée + reflet de lèvre inférieure
-      ctx.strokeStyle = skinRamp.contour;
-      ctx.lineWidth = 0.72;
+      const eyeGlow =
+        f.id === 'krowen'
+          ? '#FACC15'
+          : f.id === 'malakor'
+          ? '#E879F9'
+          : f.id === 'nyxia'
+          ? '#67E8F9'
+          : '#F8FAFC';
+
+      const eyeCenterX = hd.x + 1.2 + 2.15 * frontFactor;
+      ctx.fillStyle = eyeGlow;
       ctx.beginPath();
-      ctx.moveTo(hd.x + 3.2, mouthY + 0.1);
-      ctx.lineTo(hd.x + 5.5, mouthY + 0.05);
-      ctx.stroke();
+      ctx.ellipse(
+        eyeCenterX,
+        hd.y - 0.9,
+        1.65 * (0.35 + 0.65 * frontFactor),
+        isPain ? 0.62 : 0.88,
+        0,
+        0,
+        Math.PI * 2
+      );
+      ctx.fill();
+
+      if (f.id !== 'krowen' && f.id !== 'malakor' && f.id !== 'nyxia') {
+        ctx.fillStyle = isPowerGlow ? def.accentColor : '#0F172A';
+        ctx.beginPath();
+        ctx.arc(eyeCenterX + 0.6 * frontFactor, hd.y - 0.9, 0.74 * frontFactor, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Éclat cornéen blanc pur (donne vie au regard en pixel-art)
+        ctx.fillStyle = '#FFFFFF';
+        ctx.beginPath();
+        ctx.arc(eyeCenterX + 0.3 * frontFactor, hd.y - 1.15, 0.34 * frontFactor, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
+
+    // Expressions buccales (visages découverts : Kenji, Mei-Lin, Titan, Nyxia)
+    if (f.id !== 'krowen' && f.id !== 'malakor') {
+      const mouthY = f.id === 'titan' ? hd.y + 2.4 : hd.y + 2.65;
+      const mouthX = hd.x + 1.2 + 2.0 * frontFactor;
+      const mouthW = Math.max(0.8, 2.5 * frontFactor);
+      if (isFierce) {
+        // Cri martial Kiai : bouche ouverte + éclat des dents supérieures
+        ctx.fillStyle = '#450A0A';
+        ctx.beginPath();
+        ctx.roundRect(mouthX, mouthY - 0.55, mouthW, 1.75, 0.55);
+        ctx.fill();
+        ctx.fillStyle = '#F8FAFC';
+        ctx.fillRect(mouthX + 0.2, mouthY - 0.45, Math.max(0.6, mouthW - 0.5), 0.65);
+      } else if (isPain) {
+        // Grimace dents serrées sous le choc
+        ctx.fillStyle = '#0F172A';
+        ctx.beginPath();
+        ctx.roundRect(mouthX - 0.4, mouthY - 0.45, mouthW + 0.3, 1.4, 0.4);
+        ctx.fill();
+        ctx.fillStyle = '#F8FAFC';
+        ctx.fillRect(mouthX - 0.2, mouthY - 0.2, mouthW, 0.9);
+      } else if (f.action === 'VICTORY') {
+        // Sourire confiant de vainqueur
+        ctx.strokeStyle = skinRamp.contour;
+        ctx.lineWidth = 0.78;
+        ctx.beginPath();
+        ctx.moveTo(mouthX - 0.5, mouthY - 0.1);
+        ctx.quadraticCurveTo(mouthX + mouthW * 0.5, mouthY + 0.55, mouthX + mouthW, mouthY - 0.2);
+        ctx.stroke();
+      } else {
+        // Ligne labiale martiale déterminée + reflet de lèvre inférieure
+        ctx.strokeStyle = skinRamp.contour;
+        ctx.lineWidth = 0.72;
+        ctx.beginPath();
+        ctx.moveTo(mouthX, mouthY + 0.1);
+        ctx.lineTo(mouthX + mouthW, mouthY + 0.05);
+        ctx.stroke();
+      }
+    }
+    ctx.restore();
   }
 
   // Coiffures, Bandeaux, Capuches & Heaumes haute précision
-  const wind = Math.sin(frame * 0.22 - f.vx * 0.4) * 2.2;
+  const isJumping = f.vy < -0.4;
+  const isFalling = f.vy > 0.4;
+  // Cinématique réactive : les rubans et mèches s'élèvent en chute, descendent en saut, et traînent en course
+  const liftY = -f.vy * 1.85;
+  const dragX = -f.vx * 2.5 - (f.action.includes('ATTACK') || f.action === 'LOW_KICK' ? 4.0 : 0);
+  const flutterRate = isJumping || isFalling || Math.abs(f.vx) > 0.4 ? 0.38 : 0.20;
+  const ribbonWave1 = Math.sin(frame * flutterRate) * (isFalling ? 5.2 : 2.8);
+  const ribbonWave2 = Math.cos(frame * (flutterRate * 0.9) + 0.8) * (isFalling ? 4.2 : 2.2);
 
   if (f.id === 'kenji') {
     const hairGrad = ctx.createLinearGradient(hd.x, hd.y - 10.5, hd.x, hd.y - 2);
@@ -1981,16 +2003,27 @@ function drawDetailedHead(
 
     ctx.fillStyle = hairGrad;
     ctx.beginPath();
-    ctx.moveTo(hd.x - 6.3, hd.y - 1.5);
+    ctx.moveTo(hd.x - 6.3 - backFactor * 0.5, hd.y - 1.5);
     ctx.lineTo(hd.x - 8.2, hd.y - 7.2);
     ctx.lineTo(hd.x - 4.4, hd.y - 6.6);
     ctx.lineTo(hd.x - 3.3, hd.y - 10.2);
     ctx.lineTo(hd.x + 0.5, hd.y - 7.6);
     ctx.lineTo(hd.x + 3.2, hd.y - 9.8);
-    ctx.lineTo(hd.x + 6.5, hd.y - 5.8);
-    ctx.lineTo(hd.x + 6.0, hd.y - 3.2);
+    ctx.lineTo(hd.x + (5.0 + 1.5 * frontFactor), hd.y - 5.8);
+    ctx.lineTo(hd.x + (5.0 + 1.0 * frontFactor), hd.y - 3.2);
     ctx.closePath();
     ctx.fill();
+
+    // Volume dorsal qui s'étoffe progressivement de façon continue lors des rotations 360° (jusqu'à 180°)
+    if (backFactor > 0.05) {
+      ctx.save();
+      ctx.globalAlpha = backFactor;
+      ctx.fillStyle = hairGrad;
+      ctx.beginPath();
+      ctx.ellipse(hd.x + 0.2, hd.y - 3.2, 6.2, 6.4, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
 
     // Mèches lumineuses bleutées style anime / CPS-3
     ctx.strokeStyle = '#64748B';
@@ -1998,8 +2031,8 @@ function drawDetailedHead(
     ctx.beginPath();
     ctx.moveTo(hd.x - 3.1, hd.y - 9.4);
     ctx.lineTo(hd.x - 2.2, hd.y - 5.5);
-    ctx.moveTo(hd.x + 2.8, hd.y - 9.0);
-    ctx.lineTo(hd.x + 2.0, hd.y - 5.3);
+    ctx.moveTo(hd.x + 2.8 * frontFactor, hd.y - 9.0);
+    ctx.lineTo(hd.x + 2.0 * frontFactor, hd.y - 5.3);
     ctx.stroke();
 
     // Bandeau Hachimaki rouge galbé avec pli de soie central
@@ -2013,28 +2046,51 @@ function drawDetailedHead(
     ctx.roundRect(hd.x - 6.2, hd.y - 4.6, 12.6, 2.65, 0.9);
     ctx.fill();
 
-    // Nœud latéral et double pan flottant du Hachimaki
+    // Nœud latéral 3D qui tourne autour de la tête et pans cinétiques réactifs aux sauts et déplacements
+    const knotX = hd.x - 5.8 * faceFacing;
+    const knotY = hd.y - 3.2;
+
     ctx.fillStyle = '#991B1B';
     ctx.beginPath();
-    ctx.moveTo(hd.x - 5.8, hd.y - 3.4);
-    ctx.quadraticCurveTo(hd.x - 11.2, hd.y - 2.0 + wind * 0.7, hd.x - 15.8, Math.min(floorRestY, hd.y + 2.8 + wind));
-    ctx.lineTo(hd.x - 14.2, Math.min(floorRestY, hd.y + 4.2 + wind));
-    ctx.quadraticCurveTo(hd.x - 9.8, hd.y + 0.4 + wind * 0.5, hd.x - 5.4, hd.y - 1.9);
+    ctx.moveTo(knotX, knotY);
+    ctx.quadraticCurveTo(
+      knotX - 6.0 + dragX * 0.5,
+      knotY + 2.0 + liftY * 0.6 + ribbonWave1 * 0.7,
+      knotX - 11.5 + dragX,
+      Math.min(floorRestY, knotY + 6.5 + liftY + ribbonWave1)
+    );
+    ctx.lineTo(knotX - 10.0 + dragX, Math.min(floorRestY, knotY + 8.2 + liftY + ribbonWave1));
+    ctx.quadraticCurveTo(
+      knotX - 4.8 + dragX * 0.4,
+      knotY + 4.2 + liftY * 0.4 + ribbonWave1 * 0.4,
+      knotX + 0.4,
+      knotY + 1.2
+    );
     ctx.closePath();
     ctx.fill();
 
     ctx.fillStyle = '#EF4444';
     ctx.beginPath();
-    ctx.moveTo(hd.x - 5.8, hd.y - 4.2);
-    ctx.quadraticCurveTo(hd.x - 12.5, hd.y - 5.9 + wind, hd.x - 18.2, Math.min(floorRestY, hd.y - 2.0 + wind));
-    ctx.lineTo(hd.x - 16.5, Math.min(floorRestY, hd.y + 0.2 + wind));
-    ctx.quadraticCurveTo(hd.x - 11.5, hd.y - 2.8 + wind * 0.6, hd.x - 5.8, hd.y - 2.2);
+    ctx.moveTo(knotX, knotY - 1.0);
+    ctx.quadraticCurveTo(
+      knotX - 7.5 + dragX * 0.6,
+      knotY - 2.5 + liftY * 0.5 + ribbonWave2,
+      knotX - 13.5 + dragX * 1.1,
+      Math.min(floorRestY, knotY + 2.0 + liftY + ribbonWave2)
+    );
+    ctx.lineTo(knotX - 11.8 + dragX * 1.1, Math.min(floorRestY, knotY + 3.8 + liftY + ribbonWave2));
+    ctx.quadraticCurveTo(
+      knotX - 6.0 + dragX * 0.5,
+      knotY - 0.5 + liftY * 0.3 + ribbonWave2 * 0.5,
+      knotX,
+      knotY + 0.5
+    );
     ctx.closePath();
     ctx.fill();
 
     ctx.fillStyle = '#F87171';
     ctx.beginPath();
-    ctx.arc(hd.x - 5.8, hd.y - 3.2, 1.55, 0, Math.PI * 2);
+    ctx.arc(knotX, knotY, 1.55, 0, Math.PI * 2);
     ctx.fill();
   } else if (f.id === 'krowen') {
     const hoodGrad = ctx.createLinearGradient(hd.x - 7, hd.y - 9, hd.x + 6, hd.y + 4);
@@ -2060,29 +2116,34 @@ function drawDetailedHead(
     ctx.quadraticCurveTo(hd.x + 1.5, hd.y - 6.2, hd.x + 5.8, hd.y - 3.2);
     ctx.stroke();
 
-    // Masque démon Menpo doré ciselé avec ouïes de respiration et crocs d'ivoire
-    const maskGrad = ctx.createLinearGradient(hd.x - 1, hd.y, hd.x + 6.5, hd.y + 5.5);
-    maskGrad.addColorStop(0, '#FBBF24');
-    maskGrad.addColorStop(0.55, '#B45309');
-    maskGrad.addColorStop(1, '#451A03');
-    ctx.fillStyle = maskGrad;
-    ctx.beginPath();
-    ctx.moveTo(hd.x - 1.0, hd.y + 0.1);
-    ctx.lineTo(hd.x + 6.7, hd.y + 0.1);
-    ctx.quadraticCurveTo(hd.x + 6.3, hd.y + 5.4, hd.x + 4.8, hd.y + 5.6);
-    ctx.lineTo(hd.x - 0.8, hd.y + 5.0);
-    ctx.closePath();
-    ctx.fill();
+    // Masque démon Menpo doré ciselé avec ouïes de respiration et crocs d'ivoire (fondu progressif 3D)
+    if (frontFactor > 0.05) {
+      ctx.save();
+      ctx.globalAlpha = frontFactor;
+      const maskGrad = ctx.createLinearGradient(hd.x - 1, hd.y, hd.x + 6.5, hd.y + 5.5);
+      maskGrad.addColorStop(0, '#FBBF24');
+      maskGrad.addColorStop(0.55, '#B45309');
+      maskGrad.addColorStop(1, '#451A03');
+      ctx.fillStyle = maskGrad;
+      ctx.beginPath();
+      ctx.moveTo(hd.x - 1.0, hd.y + 0.1);
+      ctx.lineTo(hd.x + (4.0 + 2.7 * frontFactor), hd.y + 0.1);
+      ctx.quadraticCurveTo(hd.x + 6.3 * frontFactor, hd.y + 5.4, hd.x + (3.0 + 1.8 * frontFactor), hd.y + 5.6);
+      ctx.lineTo(hd.x - 0.8, hd.y + 5.0);
+      ctx.closePath();
+      ctx.fill();
 
-    ctx.fillStyle = '#FEF9C3';
-    ctx.beginPath();
-    ctx.moveTo(hd.x + 1.5, hd.y + 1.7);
-    ctx.lineTo(hd.x + 2.25, hd.y + 4.3);
-    ctx.lineTo(hd.x + 2.95, hd.y + 1.7);
-    ctx.moveTo(hd.x + 4.05, hd.y + 1.7);
-    ctx.lineTo(hd.x + 4.75, hd.y + 4.3);
-    ctx.lineTo(hd.x + 5.4, hd.y + 1.7);
-    ctx.fill();
+      ctx.fillStyle = '#FEF9C3';
+      ctx.beginPath();
+      ctx.moveTo(hd.x + 1.5, hd.y + 1.7);
+      ctx.lineTo(hd.x + 2.25, hd.y + 4.3);
+      ctx.lineTo(hd.x + 2.95, hd.y + 1.7);
+      ctx.moveTo(hd.x + 4.05, hd.y + 1.7);
+      ctx.lineTo(hd.x + 4.75, hd.y + 4.3);
+      ctx.lineTo(hd.x + 5.4, hd.y + 1.7);
+      ctx.fill();
+      ctx.restore();
+    }
   } else if (f.id === 'meilin') {
     const hairGrad = ctx.createRadialGradient(hd.x - 0.8, hd.y - 5.2, 1, hd.x - 0.5, hd.y - 3, 7);
     hairGrad.addColorStop(0, '#475569');
@@ -2100,39 +2161,45 @@ function drawDetailedHead(
     ctx.arc(hd.x - 0.2, hd.y - 3.2, 4.7, Math.PI * 1.15, Math.PI * 1.82);
     ctx.stroke();
 
-    // Chignon impérial + coiffe d'or, perle de jade et épingle Kanzashi
+    // Chignon impérial 3D + coiffe d'or, perle de jade et épingle Kanzashi (orbite autour de la tête)
+    const chignonX = hd.x - 5.0 * faceFacing;
     ctx.fillStyle = '#0F172A';
     ctx.beginPath();
-    ctx.arc(hd.x - 5.0, hd.y - 7.0, 3.5, 0, Math.PI * 2);
+    ctx.arc(chignonX, hd.y - 7.0, 3.5, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.strokeStyle = '#FDE047';
     ctx.lineWidth = 0.9;
     ctx.beginPath();
-    ctx.moveTo(hd.x - 8.2, hd.y - 8.6);
-    ctx.lineTo(hd.x - 2.2, hd.y - 5.4);
+    ctx.moveTo(chignonX - 3.2, hd.y - 8.6);
+    ctx.lineTo(chignonX + 2.8, hd.y - 5.4);
     ctx.stroke();
 
     ctx.fillStyle = '#FBBF24';
     ctx.beginPath();
-    ctx.roundRect(hd.x - 6.3, hd.y - 7.3, 2.8, 2.4, 0.8);
+    ctx.roundRect(chignonX - 1.3, hd.y - 7.3, 2.8, 2.4, 0.8);
     ctx.fill();
     ctx.fillStyle = '#10B981';
     ctx.beginPath();
-    ctx.arc(hd.x - 4.9, hd.y - 6.1, 0.8, 0, Math.PI * 2);
+    ctx.arc(chignonX + 0.1, hd.y - 6.1, 0.8, 0, Math.PI * 2);
     ctx.fill();
 
-    // Long ruban/natte de soie noire ondulant dans le vent
+    // Longue natte de soie noire avec physique de saut / course
     ctx.fillStyle = '#0F172A';
     ctx.beginPath();
-    ctx.moveTo(hd.x - 5.8, hd.y - 6.2);
+    ctx.moveTo(chignonX - 0.8, hd.y - 6.2);
     ctx.quadraticCurveTo(
-      hd.x - 14.5,
-      hd.y - 9.2 + wind,
-      hd.x - 16.5,
-      Math.min(floorRestY, hd.y + 2.2 + wind)
+      chignonX - 8.5 + dragX * 0.7,
+      hd.y - 9.2 + liftY * 0.6 + ribbonWave1,
+      chignonX - 11.5 + dragX,
+      Math.min(floorRestY, hd.y + 2.2 + liftY + ribbonWave1)
     );
-    ctx.quadraticCurveTo(hd.x - 10.8, hd.y - 1 + wind * 0.5, hd.x - 5.0, hd.y - 4.6);
+    ctx.quadraticCurveTo(
+      chignonX - 5.8 + dragX * 0.4,
+      hd.y - 1.0 + liftY * 0.3 + ribbonWave1 * 0.5,
+      chignonX,
+      hd.y - 4.6
+    );
     ctx.closePath();
     ctx.fill();
   } else if (f.id === 'titan') {
@@ -2146,24 +2213,29 @@ function drawDetailedHead(
     ctx.roundRect(hd.x - 5.7, hd.y - 7.5, 11.4, 3.3, 1.0);
     ctx.fill();
 
-    // Barbe et moustache de lutteur sculptées (sans cacher l'expression de la bouche !)
-    const beardGrad = ctx.createLinearGradient(hd.x, hd.y + 0.6, hd.x, hd.y + 7.2);
-    beardGrad.addColorStop(0, '#4E342E');
-    beardGrad.addColorStop(0.6, '#27170F');
-    beardGrad.addColorStop(1, '#120905');
-    ctx.fillStyle = beardGrad;
-    ctx.beginPath();
-    ctx.moveTo(hd.x - 3.8, hd.y + 0.4);
-    ctx.lineTo(hd.x + 2.4, hd.y + 1.8);
-    ctx.lineTo(hd.x + 6.4, hd.y + 1.6);
-    ctx.lineTo(hd.x + 6.3, hd.y + 2.3);
-    ctx.lineTo(hd.x + 2.9, hd.y + 2.3);
-    ctx.lineTo(hd.x + 2.9, hd.y + 3.7);
-    ctx.lineTo(hd.x + 6.3, hd.y + 3.6);
-    ctx.quadraticCurveTo(hd.x + 6.0, hd.y + 6.8, hd.x + 4.3, hd.y + 7.1);
-    ctx.lineTo(hd.x - 2.2, hd.y + 6.2);
-    ctx.closePath();
-    ctx.fill();
+    // Barbe et moustache de lutteur sculptées (fondu 3D progressif qui s'estompe quand la tête tourne)
+    if (frontFactor > 0.05) {
+      ctx.save();
+      ctx.globalAlpha = frontFactor;
+      const beardGrad = ctx.createLinearGradient(hd.x, hd.y + 0.6, hd.x, hd.y + 7.2);
+      beardGrad.addColorStop(0, '#4E342E');
+      beardGrad.addColorStop(0.6, '#27170F');
+      beardGrad.addColorStop(1, '#120905');
+      ctx.fillStyle = beardGrad;
+      ctx.beginPath();
+      ctx.moveTo(hd.x - 3.8 * faceFacing, hd.y + 0.4);
+      ctx.lineTo(hd.x + 2.4 * frontFactor, hd.y + 1.8);
+      ctx.lineTo(hd.x + (3.4 + 3.0 * frontFactor), hd.y + 1.6);
+      ctx.lineTo(hd.x + (3.3 + 3.0 * frontFactor), hd.y + 2.3);
+      ctx.lineTo(hd.x + 2.9 * frontFactor, hd.y + 2.3);
+      ctx.lineTo(hd.x + 2.9 * frontFactor, hd.y + 3.7);
+      ctx.lineTo(hd.x + (3.3 + 3.0 * frontFactor), hd.y + 3.6);
+      ctx.quadraticCurveTo(hd.x + (3.0 + 3.0 * frontFactor), hd.y + 6.8, hd.x + (2.0 + 2.3 * frontFactor), hd.y + 7.1);
+      ctx.lineTo(hd.x - 2.2 * faceFacing, hd.y + 6.2);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
   } else if (f.id === 'nyxia') {
     const silRamp = buildSmoothRamp('#F8FAFC', 1.0);
     const hairGrad = ctx.createLinearGradient(hd.x - 6, hd.y - 9, hd.x + 5, hd.y + 2);
@@ -2176,23 +2248,43 @@ function drawDetailedHead(
     ctx.arc(hd.x - 0.5, hd.y - 3.0, 6.6, Math.PI * 0.80, Math.PI * 2.18);
     ctx.fill();
 
-    // Double mèche argentée flottante
-    const lockY = Math.min(floorRestY, hd.y + 16.4);
+    // Double mèche argentée flottante avec physique réactive aux sauts et courses
+    const lockY = Math.min(floorRestY, hd.y + 16.4 + liftY);
     ctx.fillStyle = silRamp.shadow;
     ctx.beginPath();
     ctx.moveTo(hd.x - 6.0, hd.y - 2.6);
-    ctx.quadraticCurveTo(hd.x - 13.0, hd.y + 5.0 + wind * 0.6, hd.x - 11.2, Math.min(floorRestY, hd.y + 13.8));
-    ctx.lineTo(hd.x - 8.8, Math.min(floorRestY, hd.y + 12.2));
-    ctx.quadraticCurveTo(hd.x - 9.8, hd.y + 5.0 + wind * 0.4, hd.x - 4.4, hd.y - 1.2);
+    ctx.quadraticCurveTo(
+      hd.x - 13.0 + dragX * 0.6,
+      hd.y + 5.0 + liftY * 0.5 + ribbonWave1 * 0.6,
+      hd.x - 11.2 + dragX,
+      Math.min(floorRestY, hd.y + 13.8 + liftY)
+    );
+    ctx.lineTo(hd.x - 8.8 + dragX, Math.min(floorRestY, hd.y + 12.2 + liftY));
+    ctx.quadraticCurveTo(
+      hd.x - 9.8 + dragX * 0.4,
+      hd.y + 5.0 + liftY * 0.4 + ribbonWave1 * 0.4,
+      hd.x - 4.4,
+      hd.y - 1.2
+    );
     ctx.closePath();
     ctx.fill();
 
     ctx.fillStyle = silRamp.light;
     ctx.beginPath();
     ctx.moveTo(hd.x - 5.4, hd.y - 3.0);
-    ctx.quadraticCurveTo(hd.x - 11.2, hd.y + 6.0 + wind * 0.5, hd.x - 8.6, lockY);
-    ctx.lineTo(hd.x - 6.2, Math.min(floorRestY, lockY - 1.6));
-    ctx.quadraticCurveTo(hd.x - 8.0, hd.y + 6.0 + wind * 0.4, hd.x - 3.2, hd.y - 1.0);
+    ctx.quadraticCurveTo(
+      hd.x - 11.2 + dragX * 0.5,
+      hd.y + 6.0 + liftY * 0.5 + ribbonWave2 * 0.5,
+      hd.x - 8.6 + dragX * 0.8,
+      lockY
+    );
+    ctx.lineTo(hd.x - 6.2 + dragX * 0.8, Math.min(floorRestY, lockY - 1.6));
+    ctx.quadraticCurveTo(
+      hd.x - 8.0 + dragX * 0.4,
+      hd.y + 6.0 + liftY * 0.4 + ribbonWave2 * 0.4,
+      hd.x - 3.2,
+      hd.y - 1.0
+    );
     ctx.closePath();
     ctx.fill();
 
@@ -2206,27 +2298,37 @@ function drawDetailedHead(
     ctx.roundRect(hd.x - 4.0, hd.y - 4.5, 10.3, 2.0, 0.7);
     ctx.fill();
 
-    ctx.fillStyle = '#06B6D4';
-    ctx.beginPath();
-    ctx.arc(hd.x + 4.6, hd.y - 3.5, 1.5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#ECFEFF';
-    ctx.beginPath();
-    ctx.arc(hd.x + 4.7, hd.y - 3.6, 0.75, 0, Math.PI * 2);
-    ctx.fill();
+    if (frontFactor > 0.05) {
+      ctx.save();
+      ctx.globalAlpha = frontFactor;
+      ctx.fillStyle = '#06B6D4';
+      ctx.beginPath();
+      ctx.arc(hd.x + 1.2 + 3.4 * frontFactor, hd.y - 3.5, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#ECFEFF';
+      ctx.beginPath();
+      ctx.arc(hd.x + 1.3 + 3.4 * frontFactor, hd.y - 3.6, 0.75, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
   } else if (f.id === 'malakor') {
-    // Visière abyssale ombrée + regard spectral incandescent
-    ctx.fillStyle = '#0F0724';
-    ctx.fillRect(hd.x - 4.4, hd.y - 3.2, 10.6, 4.6);
+    // Visière abyssale ombrée + regard spectral incandescent (fondu 3D progressif)
+    if (frontFactor > 0.05) {
+      ctx.save();
+      ctx.globalAlpha = frontFactor;
+      ctx.fillStyle = '#0F0724';
+      ctx.fillRect(hd.x - 4.4, hd.y - 3.2, 5.0 + 5.6 * frontFactor, 4.6);
 
-    ctx.fillStyle = '#E879F9';
-    ctx.beginPath();
-    ctx.ellipse(hd.x + 3.6, hd.y - 1.0, 1.85, 0.9, -0.08, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#FFFFFF';
-    ctx.beginPath();
-    ctx.arc(hd.x + 4.0, hd.y - 1.05, 0.55, 0, Math.PI * 2);
-    ctx.fill();
+      ctx.fillStyle = '#E879F9';
+      ctx.beginPath();
+      ctx.ellipse(hd.x + 1.2 + 2.4 * frontFactor, hd.y - 1.0, 1.85 * frontFactor, 0.9, -0.08, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#FFFFFF';
+      ctx.beginPath();
+      ctx.arc(hd.x + 1.4 + 2.6 * frontFactor, hd.y - 1.05, 0.55 * frontFactor, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
 
     // Heaume impérial d'airain couronné avec nasal ciselé
     const helmGrad = ctx.createLinearGradient(hd.x - 6, hd.y - 8.0, hd.x + 6, hd.y + 1);
@@ -2357,6 +2459,137 @@ function drawProgressiveTrailRibbon(
 }
 
 /**
+ * Drapés et ceintures de premier plan (pan frontal brodé du Qipao de Mei-Lin, pagne runique turquoise de Nyxia,
+ * nœud de ceinture Obi de Kenji, boucle lourde de Titan) :
+ * Dessinés EN PREMIER PLAN après la cuisse antérieure, assurant que le bas-ventre et les cuisses
+ * ne soient JAMAIS coupés en deux par l'articulation de la hanche !
+ */
+function drawFrontGarmentFlaps(
+  ctx: CanvasRenderingContext2D,
+  f: FighterRuntime,
+  def: FighterDefinition,
+  pose: FighterPoseSkeleton,
+  globalFrame: number,
+  rightLegInFront: boolean
+): void {
+  const pel = toS(pose.pelvis);
+  const floorRestY = SPRITE_ORIGIN_Y + 1.2;
+
+  if (f.id === 'meilin') {
+    // Si coup de pied fendant très haut vers l'avant, la fente haute s'écarte
+    const isKickingForward =
+      f.action === 'LOW_KICK' ||
+      f.action === 'SPECIAL_1' ||
+      (f.action.includes('ATTACK') && (pose.ankleR.x > pose.pelvis.x + 18 || pose.ankleL.x > pose.pelvis.x + 18));
+
+    const apronBottomY = Math.min(floorRestY, pel.y + 13.6);
+    const skirtWave = Math.sin(globalFrame * 0.22 - f.vx * 0.4) * 2.2;
+    const qipaoRamp = buildSmoothRamp(def.primaryColor, 1.0);
+    const skGrad = ctx.createLinearGradient(pel.x - 5, pel.y, pel.x + 7, apronBottomY);
+    skGrad.addColorStop(0, qipaoRamp.specular);
+    skGrad.addColorStop(0.28, qipaoRamp.light);
+    skGrad.addColorStop(0.68, qipaoRamp.mid);
+    skGrad.addColorStop(1, qipaoRamp.deepShadow);
+
+    const flapOffsetX = isKickingForward ? -4.2 : 0;
+    const flapWidth = isKickingForward ? 8.2 : 10.4;
+
+    // Pan frontal de soie impériale qui drape le bas-ventre et la cuisse en un bloc fluide
+    ctx.fillStyle = skGrad;
+    ctx.beginPath();
+    ctx.moveTo(pel.x - 4.8 + flapOffsetX, pel.y - 1.2);
+    ctx.lineTo(pel.x - 4.8 + flapOffsetX + flapWidth, pel.y - 1.2);
+    ctx.quadraticCurveTo(
+      pel.x + 6.2 + flapOffsetX + skirtWave * 0.4,
+      (pel.y + apronBottomY) * 0.5,
+      pel.x + 6.0 + flapOffsetX + skirtWave * 0.75,
+      apronBottomY - 0.6
+    );
+    ctx.lineTo(pel.x + 0.8 + flapOffsetX + skirtWave * 0.4, apronBottomY);
+    ctx.lineTo(pel.x - 4.4 + flapOffsetX + skirtWave * 0.25, Math.min(floorRestY, apronBottomY - 1.5));
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.strokeStyle = '#FBBF24';
+    ctx.lineWidth = 1.05;
+    ctx.stroke();
+
+    // Ceinture de soie vermillon nouée en avant du bassin (ligne continue, jamais scindée !)
+    const sashGrad = ctx.createLinearGradient(pel.x, pel.y - 2.6, pel.x, pel.y + 1.5);
+    sashGrad.addColorStop(0, '#FCA5A5');
+    sashGrad.addColorStop(0.4, '#EF4444');
+    sashGrad.addColorStop(1, '#991B1B');
+    ctx.fillStyle = sashGrad;
+    ctx.beginPath();
+    ctx.roundRect(pel.x - 5.8, pel.y - 2.4, 11.6, 3.6, 1.0);
+    ctx.fill();
+
+    // Nœud de soie impérial et perle d'or
+    ctx.fillStyle = '#DC2626';
+    ctx.beginPath();
+    ctx.arc(pel.x - 2.8, pel.y - 0.6, 1.85, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#FEF08A';
+    ctx.beginPath();
+    ctx.arc(pel.x - 2.8, pel.y - 0.6, 0.85, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (f.id === 'nyxia') {
+    // Pagne runique stellaire d'Atacama drapé en avant des cuisses (zéro coupure du bas-ventre !)
+    const loinY = Math.min(floorRestY, pel.y + 11.4);
+    const nyxGrad = ctx.createLinearGradient(pel.x - 4, pel.y - 1, pel.x + 4, loinY);
+    nyxGrad.addColorStop(0, '#22D3EE');
+    nyxGrad.addColorStop(0.45, '#0891B2');
+    nyxGrad.addColorStop(1, '#164E63');
+
+    // Boucle de ceinturon de bronze
+    ctx.fillStyle = '#92400E';
+    ctx.beginPath();
+    ctx.roundRect(pel.x - 6.6, pel.y - 2.2, 13.2, 3.6, 0.9);
+    ctx.fill();
+
+    if (loinY > pel.y + 2.0) {
+      ctx.fillStyle = nyxGrad;
+      ctx.beginPath();
+      ctx.moveTo(pel.x - 3.2, pel.y - 0.8);
+      ctx.lineTo(pel.x + 3.8, pel.y - 0.8);
+      ctx.lineTo(pel.x + 2.4, loinY);
+      ctx.lineTo(pel.x + 0.3, loinY + 0.6);
+      ctx.lineTo(pel.x - 2.0, loinY);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.strokeStyle = '#FBBF24';
+      ctx.lineWidth = 0.95;
+      ctx.stroke();
+
+      // Gemme solaire centrale sur la boucle
+      ctx.fillStyle = '#F59E0B';
+      ctx.beginPath();
+      ctx.arc(pel.x + 0.3, pel.y - 0.4, 1.4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#FEF08A';
+      ctx.beginPath();
+      ctx.arc(pel.x + 0.4, pel.y - 0.5, 0.7, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  } else if (f.id === 'kenji') {
+    // Nœud du Obi (ceinture noire) et pans du Dogi en avant des hanches
+    ctx.fillStyle = '#0F172A';
+    ctx.beginPath();
+    ctx.roundRect(pel.x - 2.2, pel.y - 1.5, 4.4, 3.2, 0.8);
+    ctx.fill();
+    ctx.fillStyle = '#1E293B';
+    ctx.beginPath();
+    ctx.moveTo(pel.x - 1.2, pel.y + 1.2);
+    ctx.lineTo(pel.x - 3.4, pel.y + 6.2);
+    ctx.lineTo(pel.x - 1.6, pel.y + 6.5);
+    ctx.lineTo(pel.x + 0.2, pel.y + 1.4);
+    ctx.closePath();
+    ctx.fill();
+  }
+}
+
+/**
  * Dessine le combattant complet en haute précision dans le contexte courant (échelle 128x112).
  */
 function paintFighterVectorArt(
@@ -2366,67 +2599,142 @@ function paintFighterVectorArt(
   pose: FighterPoseSkeleton,
   globalFrame: number
 ): void {
-  // Cape royale drapée du Seigneur Malakor ou écharpe d'ombre effilochée de Krowen
+  // Cape royale drapée du Seigneur Malakor ou écharpe d'ombre de Krowen
   if (f.id === 'malakor' || f.id === 'krowen') {
     const chs = toS(pose.chest);
     const pel = toS(pose.pelvis);
     const floorRestY = SPRITE_ORIGIN_Y + 1.2;
-    const wave = Math.sin(globalFrame * 0.20) * 3.8;
+    const isTorpille = f.id === 'malakor' && f.action === 'SPECIAL_1';
+    const isJumping = f.vy < -0.3;
+    const isFalling = f.vy > 0.3;
+    const capeLift = -f.vy * 1.85; // Flotte haut lors des chutes, traîne vers le bas lors des sauts
+    const capeLag = -f.vx * 2.4;
     const capeBase = f.id === 'malakor' ? '#7F1D1D' : '#1E293B';
     const capeRamp = buildSmoothRamp(capeBase, 1.0);
-    const tipY1 = Math.min(floorRestY, pel.y + 20.5);
-    const tipY2 = Math.min(floorRestY, pel.y + 15.2);
-    const tipYMid = Math.min(floorRestY, pel.y + 17.6);
 
-    const cGrad = ctx.createLinearGradient(chs.x, chs.y - 3, pel.x - 20, tipY1);
-    cGrad.addColorStop(0, capeRamp.light);
-    cGrad.addColorStop(0.5, capeRamp.mid);
-    cGrad.addColorStop(1, capeRamp.deepShadow);
+    if (isTorpille) {
+      // Dans la Torpille Pourpre : la cape s'étire à l'horizontale derrière le corps en rotation supersonique !
+      const flutter = Math.sin(globalFrame * 0.65) * 3.2;
+      const ripple = Math.cos(globalFrame * 0.55) * 2.4;
+      const capeTailX = pel.x - 26 + flutter * 0.5;
+      const capeTailY1 = pel.y - 5.5 + flutter;
+      const capeTailY2 = pel.y + 6.0 - flutter * 0.8;
+      const capeTailYMid = pel.y + 0.5 + ripple;
 
-    ctx.fillStyle = capeRamp.contour;
-    ctx.beginPath();
-    ctx.moveTo(chs.x - 5.0, chs.y - 3.4);
-    ctx.lineTo(chs.x + 3.8, chs.y - 3.4);
-    ctx.quadraticCurveTo(pel.x - 6.5, pel.y + 7.5, pel.x - 13.8 - wave, tipY1 + 0.5);
-    ctx.lineTo(pel.x - 16.5 - wave * 0.8, tipYMid - 1.4);
-    ctx.lineTo(pel.x - 21.2 - wave * 0.6, tipY2 + 0.4);
-    ctx.quadraticCurveTo(chs.x - 11.4, pel.y, chs.x - 5.0, chs.y - 3.4);
-    ctx.closePath();
-    ctx.fill();
+      const cGrad = ctx.createLinearGradient(chs.x, chs.y, capeTailX, pel.y);
+      cGrad.addColorStop(0, capeRamp.light);
+      cGrad.addColorStop(0.45, capeRamp.mid);
+      cGrad.addColorStop(1, capeRamp.deepShadow);
 
-    ctx.fillStyle = cGrad;
-    ctx.beginPath();
-    ctx.moveTo(chs.x - 4.5, chs.y - 3.0);
-    ctx.lineTo(chs.x + 3.5, chs.y - 3.0);
-    ctx.quadraticCurveTo(pel.x - 7.0, pel.y + 8.0, pel.x - 14.0 - wave, tipY1);
-    ctx.lineTo(pel.x - 16.4 - wave * 0.8, tipYMid - 2.0);
-    ctx.lineTo(pel.x - 20.8 - wave * 0.6, tipY2);
-    ctx.quadraticCurveTo(chs.x - 11.0, pel.y, chs.x - 4.5, chs.y - 3.0);
-    ctx.closePath();
-    ctx.fill();
-
-    // Plis drapés internes de la cape
-    ctx.strokeStyle = capeRamp.deepShadow;
-    ctx.lineWidth = 0.85;
-    ctx.beginPath();
-    ctx.moveTo(chs.x - 2.0, chs.y - 1.5);
-    ctx.quadraticCurveTo(pel.x - 9.0, pel.y + 6.5, pel.x - 16.4 - wave * 0.8, tipYMid - 2.0);
-    ctx.stroke();
-
-    if (f.id === 'malakor') {
-      ctx.strokeStyle = '#F59E0B';
-      ctx.lineWidth = 1.15;
+      ctx.fillStyle = capeRamp.contour;
       ctx.beginPath();
-      ctx.moveTo(pel.x - 14.0 - wave, tipY1);
-      ctx.lineTo(pel.x - 16.4 - wave * 0.8, tipYMid - 2.0);
-      ctx.lineTo(pel.x - 20.8 - wave * 0.6, tipY2);
+      ctx.moveTo(chs.x - 2, chs.y - 7.5);
+      ctx.lineTo(chs.x - 2, chs.y + 7.5);
+      ctx.quadraticCurveTo(pel.x - 8, pel.y + 6, capeTailX, capeTailY2);
+      ctx.lineTo(capeTailX - 4, capeTailYMid);
+      ctx.lineTo(capeTailX + 2, capeTailY1);
+      ctx.quadraticCurveTo(pel.x - 8, pel.y - 6, chs.x - 2, chs.y - 7.5);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = cGrad;
+      ctx.beginPath();
+      ctx.moveTo(chs.x - 1.5, chs.y - 6.8);
+      ctx.lineTo(chs.x - 1.5, chs.y + 6.8);
+      ctx.quadraticCurveTo(pel.x - 8, pel.y + 5.2, capeTailX + 1, capeTailY2 - 0.8);
+      ctx.lineTo(capeTailX - 3, capeTailYMid);
+      ctx.lineTo(capeTailX + 2.5, capeTailY1 + 0.8);
+      ctx.quadraticCurveTo(pel.x - 8, pel.y - 5.2, chs.x - 1.5, chs.y - 6.8);
+      ctx.closePath();
+      ctx.fill();
+
+      // Liseré d'or royal vibrant dans le sillage supersonique horizontal
+      ctx.strokeStyle = '#F59E0B';
+      ctx.lineWidth = 1.25;
+      ctx.beginPath();
+      ctx.moveTo(chs.x - 1.5, chs.y - 6.8);
+      ctx.quadraticCurveTo(pel.x - 8, pel.y - 5.5, capeTailX + 2.5, capeTailY1 + 0.8);
+      ctx.lineTo(capeTailX - 3, capeTailYMid);
+      ctx.lineTo(capeTailX + 1, capeTailY2 - 0.8);
+      ctx.quadraticCurveTo(pel.x - 8, pel.y + 5.5, chs.x - 1.5, chs.y + 6.8);
       ctx.stroke();
+    } else {
+      // Vol / Saut / Sol standard avec dynamique active de vent et d'inertie
+      const wave = Math.sin(globalFrame * (isJumping || isFalling ? 0.38 : 0.20)) * 3.8;
+      const tipY1 = Math.min(floorRestY, pel.y + 20.5 - capeLift);
+      const tipY2 = Math.min(floorRestY, pel.y + 15.2 - capeLift * 0.85);
+      const tipYMid = Math.min(floorRestY, pel.y + 17.6 - capeLift * 0.95);
+      const tipX1 = pel.x - 13.8 + capeLag - wave;
+      const tipX2 = pel.x - 21.2 + capeLag * 0.8 - wave * 0.6;
+      const tipXMid = pel.x - 16.5 + capeLag * 0.9 - wave * 0.8;
+
+      const cGrad = ctx.createLinearGradient(chs.x, chs.y - 3, pel.x - 20, tipY1);
+      cGrad.addColorStop(0, capeRamp.light);
+      cGrad.addColorStop(0.5, capeRamp.mid);
+      cGrad.addColorStop(1, capeRamp.deepShadow);
+
+      ctx.fillStyle = capeRamp.contour;
+      ctx.beginPath();
+      ctx.moveTo(chs.x - 5.0, chs.y - 3.4);
+      ctx.lineTo(chs.x + 3.8, chs.y - 3.4);
+      ctx.quadraticCurveTo(pel.x - 6.5, pel.y + 7.5, tipX1, tipY1 + 0.5);
+      ctx.lineTo(tipXMid, tipYMid - 1.4);
+      ctx.lineTo(tipX2, tipY2 + 0.4);
+      ctx.quadraticCurveTo(chs.x - 11.4, pel.y, chs.x - 5.0, chs.y - 3.4);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = cGrad;
+      ctx.beginPath();
+      ctx.moveTo(chs.x - 4.5, chs.y - 3.0);
+      ctx.lineTo(chs.x + 3.5, chs.y - 3.0);
+      ctx.quadraticCurveTo(pel.x - 7.0, pel.y + 8.0, tipX1 - 0.2, tipY1);
+      ctx.lineTo(tipXMid + 0.1, tipYMid - 2.0);
+      ctx.lineTo(tipX2 + 0.4, tipY2);
+      ctx.quadraticCurveTo(chs.x - 11.0, pel.y, chs.x - 4.5, chs.y - 3.0);
+      ctx.closePath();
+      ctx.fill();
+
+      // Plis drapés internes de la cape
+      ctx.strokeStyle = capeRamp.deepShadow;
+      ctx.lineWidth = 0.85;
+      ctx.beginPath();
+      ctx.moveTo(chs.x - 2.0, chs.y - 1.5);
+      ctx.quadraticCurveTo(pel.x - 9.0, pel.y + 6.5, tipXMid, tipYMid - 2.0);
+      ctx.stroke();
+
+      if (f.id === 'malakor') {
+        ctx.strokeStyle = '#F59E0B';
+        ctx.lineWidth = 1.15;
+        ctx.beginPath();
+        ctx.moveTo(tipX1 - 0.2, tipY1);
+        ctx.lineTo(tipXMid + 0.1, tipYMid - 2.0);
+        ctx.lineTo(tipX2 + 0.4, tipY2);
+        ctx.stroke();
+      }
     }
   }
 
-  const legThick = f.id === 'titan' ? 5.8 : f.id === 'malakor' ? 5.0 : 4.3;
-  const shinThick = f.id === 'titan' ? 4.8 : 3.6;
-  const armThick = f.id === 'titan' ? 5.3 : f.id === 'malakor' ? 4.4 : 3.5;
+  const legThick =
+    f.id === 'titan' ? 6.2 :
+    f.id === 'malakor' ? 5.2 :
+    f.id === 'kenji' ? 4.4 :
+    f.id === 'krowen' ? 4.0 :
+    f.id === 'nyxia' ? 3.8 : 3.5;
+
+  const shinThick =
+    f.id === 'titan' ? 5.4 :
+    f.id === 'malakor' ? 4.6 :
+    f.id === 'kenji' ? 3.7 :
+    f.id === 'krowen' ? 3.3 :
+    f.id === 'nyxia' ? 3.2 : 2.9;
+
+  const armThick =
+    f.id === 'titan' ? 5.8 :
+    f.id === 'malakor' ? 4.8 :
+    f.id === 'kenji' ? 3.7 :
+    f.id === 'krowen' ? 3.2 :
+    f.id === 'nyxia' ? 3.0 : 2.8;
 
   const pantsColor =
     f.id === 'titan'
@@ -2485,6 +2793,9 @@ function paintFighterVectorArt(
   } else {
     drawFighterLeg(ctx, f, def, pose, pose.hipL, pose.kneeL, pose.ankleL, pose.toeL, legThick, shinThick, pantsColor, bootColor, true);
   }
+
+  // Drapés de premier plan (pan de Qipao, pagne runique, obi) : dessinés EN PREMIER PLAN après les jambes pour éliminer toute coupure du bas-ventre !
+  drawFrontGarmentFlaps(ctx, f, def, pose, globalFrame, rightLegInFront);
 
   // Pour les armes (Katana / Éventail), le sillage ardent précède le dessin de la lame d'acier brillante
   if (pose.progressiveTrail && pose.progressiveTrail.isWeapon) {

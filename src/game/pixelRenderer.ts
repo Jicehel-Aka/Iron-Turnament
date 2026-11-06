@@ -885,7 +885,8 @@ export function renderMatchToCanvas(
   targetCanvas: HTMLCanvasElement,
   state: MatchEngineState,
   stage: StageDefinition,
-  renderMode: RenderEngineMode
+  renderMode: RenderEngineMode,
+  scanlines = false
 ): void {
   ensureStageImagesPreloaded();
 
@@ -958,6 +959,13 @@ export function renderMatchToCanvas(
   ctx.restore();
 
   drawArcadeHUD320(ctx, state);
+
+  if (scanlines) {
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.22)';
+    for (let y = 0; y < ARENA_HEIGHT; y += 2) {
+      ctx.fillRect(0, y, ARENA_WIDTH, 1);
+    }
+  }
 
   targetCtx.imageSmoothingEnabled = false;
   targetCtx.clearRect(0, 0, targetCanvas.width, targetCanvas.height);

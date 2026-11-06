@@ -167,8 +167,19 @@ function createBaseMartialPose(id: FighterId, phaseRad: number): FighterPoseSkel
   const breath = Math.sin(phaseRad) * 1.2;
   const sway = Math.cos(phaseRad) * 0.9;
 
-  const scaleH = id === 'titan' ? 1.12 : id === 'malakor' ? 1.08 : id === 'meilin' ? 0.95 : 1.0;
-  const shoulderZ = id === 'titan' ? 10.5 : id === 'malakor' ? 9.2 : 7.2;
+  const scaleH =
+    id === 'titan' ? 1.15 :
+    id === 'malakor' ? 1.10 :
+    id === 'nyxia' ? 1.02 :
+    id === 'krowen' ? 0.98 :
+    id === 'meilin' ? 0.94 : 1.00;
+
+  const shoulderZ =
+    id === 'titan' ? 11.5 :
+    id === 'malakor' ? 10.2 :
+    id === 'kenji' ? 8.0 :
+    id === 'krowen' ? 7.4 :
+    id === 'nyxia' ? 7.2 : 6.2;
 
   const base: FighterPoseSkeleton = {
     spinY: 0,
@@ -531,6 +542,13 @@ function computePoseCore(
   const idlePhase = globalFrame * 0.14 + f.slot * 1.7;
   const p = createBaseMartialPose(f.id, idlePhase);
 
+  const scaleH =
+    f.id === 'titan' ? 1.15 :
+    f.id === 'malakor' ? 1.10 :
+    f.id === 'nyxia' ? 1.02 :
+    f.id === 'krowen' ? 0.98 :
+    f.id === 'meilin' ? 0.94 : 1.0;
+
   switch (f.action) {
     case 'IDLE':
       return { pose: enforceAnatomicalIntegrity(p), trailSpec: null };
@@ -545,25 +563,31 @@ function computePoseCore(
       const liftR = Math.max(0, c1) * 6.5;
 
       p.spinY = s1 * 0.18;
-      p.pelvis.y = 30 + Math.abs(s1) * 1.8;
+      p.pelvis.y = 31 * scaleH + Math.abs(s1) * 1.8;
       p.waist.x += dirSign * 1.2;
+      p.waist.y = 39 * scaleH + Math.abs(s1) * 1.8;
       p.chest.x += dirSign * 2.2;
+      p.chest.y = 48 * scaleH + Math.abs(s1) * 1.8;
       p.neck.x += dirSign * 2.2;
+      p.neck.y = 53 * scaleH + Math.abs(s1) * 1.8;
       p.head.x += dirSign * 2.2;
+      p.head.y = 60 * scaleH + Math.abs(s1) * 1.8;
       p.shoulderR.x = p.chest.x + 1.5;
+      p.shoulderR.y = 47 * scaleH + Math.abs(s1) * 1.8;
       p.shoulderL.x = p.chest.x - 2.0;
+      p.shoulderL.y = 47 * scaleH + Math.abs(s1) * 1.8;
       p.elbowR.x += dirSign * 1.8 - s1 * 2.0;
       p.wristR.x += dirSign * 1.8 - s1 * 2.4;
       p.elbowL.x += dirSign * 1.5 + s1 * 2.0;
       p.wristL.x += dirSign * 1.5 + s1 * 2.4;
 
-      p.hipL = j(-s1 * 4.5, 29, -4.5);
-      p.kneeL = j(-s1 * 9.5 + 3, 15.5 + liftL * 0.6, -5);
+      p.hipL = j(-s1 * 4.5, 30 * scaleH, -4.5);
+      p.kneeL = j(-s1 * 9.5 + 3, 16 * scaleH + liftL * 0.6, -5);
       p.ankleL = j(-s1 * 13, 2.8 + liftL, -5);
       p.toeL = j(-s1 * 13 + 5.6, 1.0 + liftL * 0.82, -5);
 
-      p.hipR = j(s1 * 4.5, 29, 4.5);
-      p.kneeR = j(s1 * 9.5 + 3, 15.5 + liftR * 0.6, 5);
+      p.hipR = j(s1 * 4.5, 30 * scaleH, 4.5);
+      p.kneeR = j(s1 * 9.5 + 3, 16 * scaleH + liftR * 0.6, 5);
       p.ankleR = j(s1 * 13, 2.8 + liftR, 5);
       p.toeR = j(s1 * 13 + 5.6, 1.0 + liftR * 0.82, 5);
 
@@ -577,27 +601,27 @@ function computePoseCore(
     }
 
     case 'CROUCH': {
-      p.pelvis = j(-1, 18, 0);
-      p.waist = j(2, 25, 0);
-      p.chest = j(5, 33, 0);
-      p.neck = j(6, 38, 0);
-      p.head = j(7, 44, 0);
+      p.pelvis = j(-1, 19 * scaleH, 0);
+      p.waist = j(2, 26 * scaleH, 0);
+      p.chest = j(5, 34 * scaleH, 0);
+      p.neck = j(6, 39 * scaleH, 0);
+      p.head = j(7, 45 * scaleH, 0);
 
-      p.shoulderL = j(3, 32, -7.5);
-      p.elbowL = j(-2, 23, -8.5);
-      p.wristL = j(9, 28, -5);
+      p.shoulderL = j(3, 33 * scaleH, -7.5);
+      p.elbowL = j(-2, 24 * scaleH, -8.5);
+      p.wristL = j(9, 29 * scaleH, -5);
 
-      p.shoulderR = j(6.5, 32, 7.5);
-      p.elbowR = j(11, 24, 8.5);
-      p.wristR = j(17, 31, 5);
+      p.shoulderR = j(6.5, 33 * scaleH, 7.5);
+      p.elbowR = j(11, 25 * scaleH, 8.5);
+      p.wristR = j(17, 32 * scaleH, 5);
 
-      p.hipL = j(-4, 17, -4.5);
-      p.kneeL = j(-11, 6, -5.5);
+      p.hipL = j(-4, 18 * scaleH, -4.5);
+      p.kneeL = j(-11, 7 * scaleH, -5.5);
       p.ankleL = j(-16, 3, -5);
       p.toeL = j(-10.5, 1, -5);
 
-      p.hipR = j(4, 17, 4.5);
-      p.kneeR = j(15, 13, 5.5);
+      p.hipR = j(4, 18 * scaleH, 4.5);
+      p.kneeR = j(15, 14 * scaleH, 5.5);
       p.ankleR = j(11, 3, 5);
       p.toeR = j(16.5, 1, 5);
       return { pose: enforceAnatomicalIntegrity(p), trailSpec: null };
@@ -704,12 +728,12 @@ function computePoseCore(
         p.ankleL = j(1, 14, -7);
         p.toeL = j(5.5, 10.5, -7);
 
-        const wrRStart = lerpJ(p.wristR, j(8, 66, 8), env.windupU);
-        const wrLStart = lerpJ(p.wristL, j(6, 66, -8), env.windupU);
-        p.elbowR = bezierJ(j(7, 57, 11), j(19, 53, 10), j(20, 39, 8), env.ext);
-        p.wristR = bezierJ(wrRStart, j(27, 50, 7), j(28, 28, 5), env.ext);
-        p.elbowL = bezierJ(j(5, 57, -11), j(17, 53, -10), j(18, 39, -8), env.ext);
-        p.wristL = bezierJ(wrLStart, j(25, 50, -7), j(26, 28, -5), env.ext);
+        const wrRStart = lerpJ(p.wristR, j(11, 56, 8), env.windupU);
+        const wrLStart = lerpJ(p.wristL, j(9, 56, -8), env.windupU);
+        p.elbowR = bezierJ(j(11, 51, 10), j(16, 46, 8), j(16, 39, 7), env.ext);
+        p.wristR = bezierJ(wrRStart, j(20, 43, 6), j(22, 31, 5), env.ext);
+        p.elbowL = bezierJ(j(9, 51, -10), j(14, 46, -8), j(14, 39, -7), env.ext);
+        p.wristL = bezierJ(wrLStart, j(18, 43, -6), j(20, 31, -5), env.ext);
 
         return {
           pose: applyFullBodyTransform(p),
@@ -724,7 +748,7 @@ function computePoseCore(
         };
       }
 
-      // Tobi-Geri (Coup de pied volant profilé : genou armé vers la poitrine -> détente vive du pied)
+      // Tobi-Geri (Coup de pied volant profilé : genou armé vers la poitrine -> détente vive du pied anatomiquement bridée)
       p.pitchZ = 0.20 * env.ext;
       p.pelvis = j(2, 33, 0);
       p.waist = j(lerp(1, -1, env.ext), 40, 0);
@@ -745,9 +769,10 @@ function computePoseCore(
       const ankleChamber = lerpJ(j(8, 15, 5), j(6, 23, 5), env.windupU);
       const toeChamber = lerpJ(j(13, 13, 5), j(11, 21, 5), env.windupU);
 
-      p.kneeR = bezierJ(kneeChamber, j(20, 31, 4), j(22, 27, 3), env.ext);
-      p.ankleR = bezierJ(ankleChamber, j(24, 28, 3), j(36, 22, 1), env.ext);
-      p.toeR = bezierJ(toeChamber, j(29, 29, 3), j(41.5, 24, 1), env.ext);
+      // Cuisse, tibia et pied strictement bridés aux proportions réelles (sans étirement démesuré)
+      p.kneeR = bezierJ(kneeChamber, j(17, 30, 4), j(19, 27, 3), env.ext);
+      p.ankleR = bezierJ(ankleChamber, j(22, 26, 3), j(26, 22, 1), env.ext);
+      p.toeR = bezierJ(toeChamber, j(27, 27, 3), j(31, 23.5, 1), env.ext);
 
       if (f.id === 'meilin') p.weaponDrawn = 'FAN_OPEN';
 
@@ -794,34 +819,37 @@ function computePoseCore(
     }
 
     case 'EVADE_MID': {
+      // Esquive moyenne martiale (retrait fluide du buste et pivot contrôlé sans déformation textile)
       const slip = Math.sin(progress * Math.PI);
-      const zShift = -15 * slip;
-      p.spinY = 1.10 * slip;
+      const zShift = -3.2 * slip;
+      p.spinY = 0.28 * slip;
 
-      p.pelvis = j(-4 * slip, 30, zShift);
-      p.waist = j(-3 * slip, 38, zShift);
-      p.chest = j(-2 * slip, 47, zShift);
-      p.neck = j(-2 * slip, 52, zShift);
-      p.head = j(-1 * slip, 59, zShift);
+      p.pelvis = j(-3 * slip, 30, zShift);
+      p.waist = j(-4.5 * slip, 38, zShift);
+      p.chest = j(-5.5 * slip, 47, zShift);
+      p.neck = j(-5.8 * slip, 52, zShift);
+      p.head = j(-5.5 * slip, 59, zShift);
 
-      p.shoulderL = j(-4, 46, -7.5 + zShift);
-      p.elbowL = j(-9, 38, -9 + zShift);
-      p.wristL = j(-2, 43, -6 + zShift);
+      // Bras d'équilibre souples en garde serrée
+      p.shoulderL = j(p.chest.x - 2, 46, -7 + zShift);
+      p.elbowL = j(p.chest.x - 6, 38, -8 + zShift);
+      p.wristL = j(p.chest.x - 1, 44, -5 + zShift);
 
-      p.shoulderR = j(2, 47, 7.5 + zShift);
-      p.elbowR = j(8, 39, 9 + zShift);
-      p.wristR = j(15, 45, 5 + zShift);
+      p.shoulderR = j(p.chest.x + 2, 46.5, 7 + zShift);
+      p.elbowR = j(p.chest.x + 5, 39, 8 + zShift);
+      p.wristR = j(p.chest.x + 11, 45, 5 + zShift);
 
-      p.hipL = j(-7, 29, -4.5 + zShift);
-      p.kneeL = j(-11, 15, -5.5 + zShift);
-      p.ankleL = j(-14, 3, -5 + zShift);
-      p.toeL = j(-8.5, 1, -5 + zShift);
+      // Appuis au sol stables et naturels
+      p.hipL = j(-6, 29, -4.5 + zShift);
+      p.kneeL = j(-9, 15, -5.5 + zShift);
+      p.ankleL = j(-12, 3, -5 + zShift);
+      p.toeL = j(-7.5, 1, -5 + zShift);
 
       p.hipR = j(3, 29, 4.5 + zShift);
-      p.kneeR = j(9, 16, 5.5 + zShift);
-      p.ankleR = j(10, 3, 5 + zShift);
-      p.toeR = j(15.5, 1, 5 + zShift);
-      return { pose: applyFullBodyTransform(p), trailSpec: null };
+      p.kneeR = j(8, 16, 5.5 + zShift);
+      p.ankleR = j(9, 3, 5 + zShift);
+      p.toeR = j(14.5, 1, 5 + zShift);
+      return { pose: enforceAnatomicalIntegrity(p), trailSpec: null };
     }
 
     case 'EVADE_LOW': {
@@ -1142,19 +1170,21 @@ function computePoseCore(
       p.elbowL = lerpJ(p.elbowL, j(-13, 17, -shZ - 1), crouchT);
       p.wristL = lerpJ(p.wristL, j(-16, 7, -shZ * 0.85), crouchT);
 
-      p.hipL = j(-5, p.pelvis.y - 1, -5);
-      p.kneeL = j(-13, lerp(15, 6, crouchT), -7);
-      p.ankleL = j(-8, 3, -6);
-      p.toeL = j(-2.5, 1, -6);
+      // Jambe d'appui arrière pliée au sol avec pied arrière stable orienté naturellement
+      p.hipL = j(-4, p.pelvis.y - 1, -4.5);
+      p.kneeL = j(-7, lerp(15, 7, crouchT), -5);
+      p.ankleL = j(-12, 3, -4.5);
+      p.toeL = j(-7, 1, -4.5);
 
+      // Jambe avant balayeuse au ras du sol bridée anatomiquement
       p.hipR = j(4, p.pelvis.y - 1, 4);
       const knStart = lerpJ(p.kneeR, j(9, 12, 6), env.windupU);
       const akStart = lerpJ(p.ankleR, j(8, 4, 7), env.windupU);
       const toStart = lerpJ(p.toeR, j(13.5, 2, 7), env.windupU);
 
-      p.kneeR = bezierJ(knStart, j(17, 9, 6), j(21, 7, 3), env.ext);
-      p.ankleR = bezierJ(akStart, j(23, 5, 7), j(35, 4, 1), env.ext);
-      p.toeR = bezierJ(toStart, j(28.5, 5, 7), j(40.5, 5.5, 1), env.ext);
+      p.kneeR = bezierJ(knStart, j(15, 8, 5), j(19, 6, 3), env.ext);
+      p.ankleR = bezierJ(akStart, j(21, 5, 5), j(27, 4, 1), env.ext);
+      p.toeR = bezierJ(toStart, j(26, 5, 5), j(32.5, 4.5, 1), env.ext);
 
       return {
         pose: enforceAnatomicalIntegrity(p),
@@ -1213,38 +1243,44 @@ function computePoseCore(
 
     case 'SPECIAL_1': {
       if (f.id === 'kenji') {
-        // Onde Céleste : concentration du Ki aux hanches [0..0.28] -> poussée des paumes [0.28..0.54]
+        // Onde Céleste : concentration du Ki à la hanche droite [0..0.28] -> double poussée des paumes [0.28..0.54]
         if (progress <= 0.28) {
           const c = smoothStep(progress / 0.28);
-          p.spinY = 0.44 * c;
-          p.elbowR = lerpJ(p.elbowR, j(-8, 36, 7), c);
-          p.elbowL = lerpJ(p.elbowL, j(-10, 38, -7), c);
-          p.wristR = lerpJ(p.wristR, j(-6, 36, 4), c);
-          p.wristL = lerpJ(p.wristL, j(-8, 38, -4), c);
+          p.spinY = 0.20 * c;
+          p.shoulderR = j(p.chest.x + 1.5, p.chest.y - 1, 7);
+          p.shoulderL = j(p.chest.x - 1.5, p.chest.y - 1, -7);
+          // Bras armés près de la hanche droite sans dislocation arrière
+          p.elbowR = lerpJ(p.elbowR, j(-1, 38, 6), c);
+          p.elbowL = lerpJ(p.elbowL, j(-3, 40, -5), c);
+          p.wristR = lerpJ(p.wristR, j(3, 35, 4), c);
+          p.wristL = lerpJ(p.wristL, j(2, 38, -3), c);
           p.weaponDrawn = 'KI_CHARGE';
-          return { pose: applyFullBodyTransform(p), trailSpec: null };
+          return { pose: enforceAnatomicalIntegrity(p), trailSpec: null };
         }
         const env = strikeEnvelope(progress, 0.28, 0.52, 0.78);
-        p.spinY = lerp(0.44, -0.22, env.ext);
-        p.pelvis = j(lerp(0, 4, env.ext), lerp(31, 27, env.ext), 0);
-        p.waist = j(lerp(1, 7, env.ext), lerp(39, 35.5, env.ext), 0);
-        p.chest = j(lerp(2, 10, env.ext), lerp(48, 44, env.ext), 0);
-        p.neck = j(lerp(2.5, 11, env.ext), lerp(53, 49.5, env.ext), 0);
-        p.head = j(lerp(3, 12, env.ext), lerp(60, 55, env.ext), 0);
+        p.spinY = lerp(0.20, -0.06, env.ext);
+        p.pelvis = j(lerp(0, 3, env.ext), lerp(31, 28, env.ext), 0);
+        p.waist = j(lerp(1, 5, env.ext), lerp(39, 36, env.ext), 0);
+        p.chest = j(lerp(2, 7, env.ext), lerp(48, 45, env.ext), 0);
+        p.neck = j(lerp(2.5, 8, env.ext), lerp(53, 50, env.ext), 0);
+        p.head = j(lerp(3, 9, env.ext), lerp(60, 56, env.ext), 0);
         p.shoulderR = j(p.chest.x + 1.5, p.chest.y - 1, 7);
         p.shoulderL = j(p.chest.x - 1.5, p.chest.y - 1, -7);
-        p.elbowR = lerpJ(j(-8, 36, 7), j(19, 42, 6), env.ext);
-        p.elbowL = lerpJ(j(-10, 38, -7), j(18, 43, -6), env.ext);
-        p.wristR = lerpJ(j(-6, 36, 4), j(29, 43, 2.5), env.ext);
-        p.wristL = lerpJ(j(-8, 38, -4), j(29, 45, -2.5), env.ext);
+
+        // Double projection des paumes parfaitement alignées au plexus
+        p.elbowR = lerpJ(j(-1, 38, 6), j(17, 43, 5), env.ext);
+        p.elbowL = lerpJ(j(-3, 40, -5), j(16, 42, -5), env.ext);
+        p.wristR = lerpJ(j(3, 35, 4), j(25, 43, 2), env.ext);
+        p.wristL = lerpJ(j(2, 38, -3), j(24, 42, -2), env.ext);
+
         p.hipR = j(5 + env.ext * 2, p.pelvis.y - 1, 4.5);
-        p.kneeR = j(11 + env.ext * 4, 15, 5);
-        p.ankleR = j(12 + env.ext * 6, 3, 5);
-        p.toeR = j(17.5 + env.ext * 6, 1, 5);
+        p.kneeR = j(11 + env.ext * 3, 15, 5);
+        p.ankleR = j(12 + env.ext * 4, 3, 5);
+        p.toeR = j(17.5 + env.ext * 4, 1, 5);
         p.auraRadius = env.ext > 0.4 ? 14 : 0;
 
         return {
-          pose: applyFullBodyTransform(p),
+          pose: enforceAnatomicalIntegrity(p),
           trailSpec: {
             part: 'BOTH_WRISTS',
             swingStart: 0.28,
@@ -1287,25 +1323,25 @@ function computePoseCore(
       }
 
       if (f.id === 'meilin') {
-        // Éventail d'Acier : pirouette Wushu + lancer de l'éventail
-        const env = strikeEnvelope(progress, 0.20, 0.50, 0.72);
+        // Éventail d'Acier : pirouette Wushu + lancer vif synchronisé de l'éventail
+        const env = strikeEnvelope(progress, 0.16, 0.36, 0.68);
         p.spinY = smoothStep(progress) * Math.PI * 2;
-        p.weaponDrawn = progress < 0.46 ? 'FAN_OPEN' : 'NONE';
+        p.weaponDrawn = progress < 0.36 ? 'FAN_OPEN' : 'NONE';
         p.shoulderR = j(p.chest.x + 1.5, p.chest.y - 1, 7);
         p.shoulderL = j(p.chest.x - 1.5, p.chest.y - 1, -7);
-        const wrBack = lerpJ(p.wristR, j(-5, 48, 8), env.windupU);
-        p.elbowR = lerpJ(j(-3, 44, 9), j(17, 47, 5), env.ext);
-        p.wristR = bezierJ(wrBack, j(16, 52, 7), j(28, 47, 2), env.ext);
-        p.elbowL = j(-8, 44, -7.5);
-        p.wristL = j(-12, 49, -6);
+        const wrBack = lerpJ(p.wristR, j(-4, 48, 7), env.windupU);
+        p.elbowR = lerpJ(j(-2, 44, 8), j(16, 47, 5), env.ext);
+        p.wristR = bezierJ(wrBack, j(15, 51, 6), j(26, 47, 2), env.ext);
+        p.elbowL = j(-7, 44, -7);
+        p.wristL = j(-11, 48, -5);
 
         return {
           pose: applyFullBodyTransform(p),
           trailSpec: {
             part: 'FAN_EDGE',
-            swingStart: 0.20,
-            swingEnd: 0.50,
-            fadeEnd: 0.62,
+            swingStart: 0.18,
+            swingEnd: 0.36,
+            fadeEnd: 0.48,
             width: 4.5,
             color: '#34D399',
           },
@@ -1804,13 +1840,15 @@ function computePoseCore(
         p.toeL = j(-0.5, 1, -4);
 
         p.hipR = j(5, 32, 4);
-        const knHigh = lerpJ(p.kneeR, j(13, 48, 5), env.windupU);
-        const akHigh = lerpJ(p.ankleR, j(18, 67, 2), env.windupU);
-        const toHigh = lerpJ(p.toeR, j(22, 71.5, 2), env.windupU);
+        // Montée du genou et armement vertical du talon bridé à 26px (proportions exactes de jambe)
+        const knHigh = lerpJ(p.kneeR, j(10, 44, 4), env.windupU);
+        const akHigh = lerpJ(p.ankleR, j(14, 55, 2), env.windupU);
+        const toHigh = lerpJ(p.toeR, j(18, 59, 2), env.windupU);
 
-        p.kneeR = bezierJ(knHigh, j(24, 38, 4), j(17, 19, 4), env.ext);
-        p.ankleR = bezierJ(akHigh, j(36, 45, 1), j(27, 10, 1), env.ext);
-        p.toeR = bezierJ(toHigh, j(41.5, 47, 1), j(32.5, 11.5, 1), env.ext);
+        // Frappe de marteau descendante fulgurante sans étirement artificiel
+        p.kneeR = bezierJ(knHigh, j(17, 31, 4), j(14, 21, 4), env.ext);
+        p.ankleR = bezierJ(akHigh, j(23, 30, 1), j(20, 10, 1), env.ext);
+        p.toeR = bezierJ(toHigh, j(27, 31, 1), j(25, 9, 1), env.ext);
 
         p.auraRadius = env.ext > 0.25 ? 16 : 0;
 
@@ -1898,13 +1936,15 @@ function computePoseCore(
         p.ankleR = j(13, 3, 5);
         p.toeR = j(18.5, 1, 5);
 
-        const wrHighR = lerpJ(p.wristR, j(6, 73, 8), env.windupU);
-        const wrHighL = lerpJ(p.wristL, j(5, 73, -8), env.windupU);
+        // Gantelets levés au-dessus de la tête sans élongation artificielle (16px max d'amplitude)
+        const wrHighR = lerpJ(p.wristR, j(p.chest.x + 3, p.chest.y + 15, 8), env.windupU);
+        const wrHighL = lerpJ(p.wristL, j(p.chest.x + 1, p.chest.y + 15, -8), env.windupU);
 
-        p.elbowR = bezierJ(j(4, 60, 11), j(21, 47, 10), j(18, 18, 10), env.ext);
-        p.wristR = bezierJ(wrHighR, j(29, 43, 7), j(24, 6, 6), env.ext);
-        p.elbowL = bezierJ(j(2, 60, -11), j(19, 47, -10), j(17, 18, -10), env.ext);
-        p.wristL = bezierJ(wrHighL, j(27, 43, -7), j(23, 6, -6), env.ext);
+        // Trajectoire en arc de cercle naturelle jusqu'au fracassement au sol
+        p.elbowR = bezierJ(j(p.chest.x + 2, p.chest.y + 8, 10), j(17, 36, 9), j(16, 21, 8), env.ext);
+        p.wristR = bezierJ(wrHighR, j(21, 31, 7), j(20, 15, 6), env.ext);
+        p.elbowL = bezierJ(j(p.chest.x, p.chest.y + 8, -10), j(15, 36, -9), j(14, 21, -8), env.ext);
+        p.wristL = bezierJ(wrHighL, j(19, 31, -7), j(19, 15, -6), env.ext);
 
         p.auraRadius = env.ext > 0.7 ? 20 : 0;
         return {
@@ -1999,12 +2039,16 @@ function computePoseCore(
       p.chest = j(-4, 46, 0);
       p.neck = j(-3.5, 51.5, 0);
       p.head = j(-3, 57, 0);
-      p.shoulderR = j(-2, 45.5, shZ);
-      p.elbowR = j(7, 40, 7);
-      p.wristR = j(10, 54, 3);
-      p.shoulderL = j(-5.5, 45.5, -shZ);
-      p.elbowL = j(5, 39, -5);
-      p.wristL = j(9, 53, -2);
+
+      // Épaulières et bras croisés en garde haute serrée sans protrusion anormale
+      p.shoulderR = j(p.chest.x + 2.0, p.chest.y - 0.5, shZ);
+      p.elbowR = j(p.chest.x + 5.5, p.chest.y - 5.5, 7);
+      p.wristR = j(p.chest.x + 8.5, p.chest.y + 4.5, 3);
+
+      p.shoulderL = j(p.chest.x - 1.8, p.chest.y - 0.5, -shZ);
+      p.elbowL = j(p.chest.x + 4.0, p.chest.y - 6.5, -5);
+      p.wristL = j(p.chest.x + 7.5, p.chest.y + 3.5, -2);
+
       p.ankleL = j(-16, 3, -5);
       p.toeL = j(-10.5, 1, -5);
       return { pose: enforceAnatomicalIntegrity(p), trailSpec: null };
@@ -2261,22 +2305,74 @@ function computePoseCore(
     case 'VICTORY': {
       p.spinY = -0.32;
       if (f.id === 'kenji') {
-        p.elbowR = j(8, 58, 8);
-        p.wristR = j(9, 75, 5);
-        p.wristL = j(-6, 38, -7);
+        // Salut martial traditionnel bushido (poing droit dans paume gauche devant le torse)
+        p.chest.x += 1;
+        p.head.x += 1.5;
+        p.elbowR = j(7, 46 * scaleH, 6);
+        p.wristR = j(3, 49 * scaleH, 2);
+        p.elbowL = j(-4, 46 * scaleH, -6);
+        p.wristL = j(3.5, 49 * scaleH, 1.5);
+        p.auraRadius = 6;
+      } else if (f.id === 'krowen') {
+        // Posture d'assassin furtif voûté, griffes croisées et lueur d'ombre
+        p.pelvis.y = 26 * scaleH;
+        p.waist = j(2, 33 * scaleH, 0);
+        p.chest = j(4, 42 * scaleH, 0);
+        p.head = j(6, 50 * scaleH, 0);
+        p.elbowR = j(9, 38 * scaleH, 6);
+        p.wristR = j(-2, 42 * scaleH, 4);
+        p.elbowL = j(-5, 38 * scaleH, -6);
+        p.wristL = j(5, 43 * scaleH, -3);
+        p.teleportFade = 0.2;
+        p.emberDissolve = true;
       } else if (f.id === 'meilin') {
+        // Éventail grand ouvert, posture de la grue / héron (jambe droite relevée)
         p.weaponDrawn = 'FAN_OPEN';
-        p.wristR = j(18, 58, 6);
-        p.hipR = j(4, 30, 4.5);
-        p.kneeR = j(14, 28, 5);
-        p.ankleR = j(8, 18, 5);
-        p.toeR = j(12.5, 14.5, 5);
-      } else {
-        p.elbowR = j(8, 58, 10);
-        p.wristR = j(12, 73, 8);
-        p.elbowL = j(-6, 56, -10);
-        p.wristL = j(-8, 71, -8);
+        p.wristR = j(16, 56 * scaleH, 6);
+        p.elbowR = j(10, 48 * scaleH, 8);
+        p.wristL = j(-7, 38 * scaleH, -5);
+        p.hipR = j(4, 30 * scaleH, 4.5);
+        p.kneeR = j(14, 27 * scaleH, 5);
+        p.ankleR = j(8, 17 * scaleH, 5);
+        p.toeR = j(12.5, 13.5 * scaleH, 5);
+        p.auraRadius = 8;
+      } else if (f.id === 'titan') {
+        // Poings métalliques martelés l'un contre l'autre, torse bombé
+        p.chest.x += 2.5;
+        p.chest.y = 50 * scaleH;
+        p.shoulderR.z = 12;
+        p.shoulderL.z = -12;
+        p.elbowR = j(11, 46 * scaleH, 10);
+        p.wristR = j(6, 47 * scaleH, 3);
+        p.elbowL = j(2, 46 * scaleH, -10);
+        p.wristL = j(5.5, 47 * scaleH, 2.5);
         p.auraRadius = 14;
+      } else if (f.id === 'nyxia') {
+        // Lévitation céleste triomphale, bras ouverts en corolle solaire
+        p.pelvis.y = 36 * scaleH;
+        p.waist.y = 44 * scaleH;
+        p.chest.y = 53 * scaleH;
+        p.head.y = 65 * scaleH;
+        p.elbowR = j(12, 54 * scaleH, 9);
+        p.wristR = j(18, 65 * scaleH, 8);
+        p.elbowL = j(-10, 52 * scaleH, -9);
+        p.wristL = j(-16, 63 * scaleH, -8);
+        p.kneeR.y = 20 * scaleH;
+        p.ankleR.y = 8 * scaleH;
+        p.toeR.y = 4 * scaleH;
+        p.kneeL.y = 19 * scaleH;
+        p.ankleL.y = 7 * scaleH;
+        p.toeL.y = 3 * scaleH;
+        p.auraRadius = 20;
+      } else if (f.id === 'malakor') {
+        // Posture de despote impérial, poing runique brandi vers le ciel
+        p.chest.x += 1;
+        p.head.x += 1.5;
+        p.elbowR = j(8, 59 * scaleH, 9);
+        p.wristR = j(10, 77 * scaleH, 6);
+        p.elbowL = j(-8, 38 * scaleH, -8);
+        p.wristL = j(-10, 26 * scaleH, -6);
+        p.auraRadius = 16;
       }
       return { pose: applyFullBodyTransform(p), trailSpec: null };
     }

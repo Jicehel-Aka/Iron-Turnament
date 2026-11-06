@@ -35,6 +35,11 @@ export default function App() {
     setActiveSection('CONSOLE');
   };
 
+  const openSoundTest = () => {
+    setPhase('SOUND_TEST');
+    setActiveSection('CONSOLE');
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-[#0B0E14] text-slate-100">
       {/* Top Bar Contract : 3 zones strictes séparées par gap-8 */}
@@ -51,13 +56,16 @@ export default function App() {
           Iron Tournament AKA
         </button>
 
-        {/* Zone 2 : 5 liens de navigation concis sur une seule ligne */}
+        {/* Zone 2 : Liens de navigation concis */}
         <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-slate-400">
           <button
             type="button"
-            onClick={() => setActiveSection('CONSOLE')}
+            onClick={() => {
+              setActiveSection('CONSOLE');
+              if (phase === 'SOUND_TEST') setPhase('TITLE_MENU');
+            }}
             className={`hover:text-white transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
-              activeSection === 'CONSOLE' ? 'text-white underline underline-offset-8 decoration-rose-500' : ''
+              activeSection === 'CONSOLE' && phase !== 'SOUND_TEST' ? 'text-white underline underline-offset-8 decoration-rose-500' : ''
             }`}
           >
             Console
@@ -75,6 +83,15 @@ export default function App() {
             className="hover:text-white transition-colors whitespace-nowrap shrink-0 cursor-pointer"
           >
             Versus
+          </button>
+          <button
+            type="button"
+            onClick={openSoundTest}
+            className={`hover:text-white transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+              phase === 'SOUND_TEST' && activeSection === 'CONSOLE' ? 'text-white underline underline-offset-8 decoration-rose-500 font-semibold' : ''
+            }`}
+          >
+            Juke-box
           </button>
           <button
             type="button"
@@ -112,8 +129,11 @@ export default function App() {
       <div className="flex md:hidden items-center justify-around gap-2 px-4 py-2 border-b border-slate-800 bg-[#10151F] text-xs font-medium text-slate-300 overflow-x-auto">
         <button
           type="button"
-          onClick={() => setActiveSection('CONSOLE')}
-          className={`px-2 py-1 whitespace-nowrap shrink-0 ${activeSection === 'CONSOLE' ? 'text-rose-400 font-semibold' : ''}`}
+          onClick={() => {
+            setActiveSection('CONSOLE');
+            if (phase === 'SOUND_TEST') setPhase('TITLE_MENU');
+          }}
+          className={`px-2 py-1 whitespace-nowrap shrink-0 ${activeSection === 'CONSOLE' && phase !== 'SOUND_TEST' ? 'text-rose-400 font-semibold' : ''}`}
         >
           Console
         </button>
@@ -130,6 +150,13 @@ export default function App() {
           className="px-2 py-1 whitespace-nowrap shrink-0"
         >
           Versus
+        </button>
+        <button
+          type="button"
+          onClick={openSoundTest}
+          className={`px-2 py-1 whitespace-nowrap shrink-0 ${phase === 'SOUND_TEST' && activeSection === 'CONSOLE' ? 'text-rose-400 font-semibold' : ''}`}
+        >
+          Juke-box
         </button>
         <button
           type="button"

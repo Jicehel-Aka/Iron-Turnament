@@ -5,6 +5,7 @@ export type GameMode = 'STORY' | 'VERSUS_CPU' | 'VERSUS_2P';
 export type ScreenPhase =
   | 'TITLE_MENU'
   | 'OPTIONS_MENU'
+  | 'SOUND_TEST'
   | 'CHARACTER_SELECT'
   | 'PRE_MATCH_DIALOGUE'
   | 'PLAYING'
