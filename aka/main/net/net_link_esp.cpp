@@ -76,6 +76,13 @@ bool read_wifi_file(char* ssid, size_t sn, char* pass, size_t pn) {
     return got && ssid[0];
 }
 
+// Copie bornee (les champs de wifi_config_t ont une taille fixe, sans zero final garanti).
+void copy_field(uint8_t* dst, size_t dn, const char* src) {
+    std::memset(dst, 0, dn);
+    const size_t n = std::strlen(src);
+    std::memcpy(dst, src, n < dn ? n : dn);
+}
+
 bool wifi_start(bool host, char* err, size_t errn) {
     // nvs_flash est deja initialise par la coquille (reglages) ; ces appels tolerent « deja fait ».
     esp_err_t e = nvs_flash_init();
@@ -94,8 +101,8 @@ bool wifi_start(bool host, char* err, size_t errn) {
 
     wifi_config_t cfg; std::memset(&cfg, 0, sizeof cfg);
     if (as_ap) {
-        std::snprintf((char*)cfg.ap.ssid, sizeof cfg.ap.ssid, "%s", kApSsid);
-        std::snprintf((char*)cfg.ap.password, sizeof cfg.ap.password, "%s", kApPass);
+        copy_field(cfg.ap.ssid, sizeof cfg.ap.ssid, kApSsid);
+        copy_field(cfg.ap.password, sizeof cfg.ap.password, kApPass);
         cfg.ap.ssid_len = (uint8_t)std::strlen(kApSsid);
         cfg.ap.channel = 6; cfg.ap.max_connection = 2; cfg.ap.authmode = WIFI_AUTH_WPA2_PSK;
         esp_wifi_set_mode(WIFI_MODE_AP);
@@ -104,8 +111,8 @@ bool wifi_start(bool host, char* err, size_t errn) {
     } else {
         const char* use_ssid = custom ? ssid : kApSsid;
         const char* use_pass = custom ? pass : kApPass;
-        std::snprintf((char*)cfg.sta.ssid, sizeof cfg.sta.ssid, "%s", use_ssid);
-        std::snprintf((char*)cfg.sta.password, sizeof cfg.sta.password, "%s", use_pass);
+        copy_field(cfg.sta.ssid, sizeof cfg.sta.ssid, use_ssid);
+        copy_field(cfg.sta.password, sizeof cfg.sta.password, use_pass);
         cfg.sta.threshold.authmode = use_pass[0] ? WIFI_AUTH_WPA2_PSK : WIFI_AUTH_OPEN;
         esp_wifi_set_mode(WIFI_MODE_STA);
         esp_wifi_set_config(WIFI_IF_STA, &cfg);
