@@ -97,7 +97,8 @@ void init_match(Match& m, FighterId p1, FighterId p2, bool boss_match, uint32_t 
 }
 
 void set_ai_level(Match& m, Difficulty diff) {
-    m.f[1].dmg_scale = g_dmg_scale[diff][m.f[1].id];
+    m.f[1].dmg_scale = g_dmg_scale[diff][m.f[1].id] * g_level_ai_mult[diff];
+    m.f[0].dmg_scale = g_dmg_scale[DIFF_MASTER][m.f[0].id] * g_level_human_mult[diff];
 }
 
 void start_next_round(Match& m) {
@@ -215,11 +216,32 @@ static int detect_special(const Fighter& f, const Input& in) {
 // -----------------------------------------------------------------------------
 // Actions
 // -----------------------------------------------------------------------------
+// Famille d'un coup pour le compte des repetitions (0 = pas un coup compte : projection, deplacement...).
+static int attack_kind(Action a) {
+    switch (a) {
+    case A_LIGHT: return 1;  case A_HEAVY: return 2;  case A_UPPERCUT: return 3;  case A_LOW_KICK: return 4;
+    case A_SPECIAL_1: return 5;  case A_SPECIAL_2: return 6;  case A_SPECIAL_3: return 7;
+    case A_JUMP_ATTACK: return 8;
+    default: return 0;
+    }
+}
+
+// Enregistre un lancer : la serie continue si c'est le meme coup que le precedent, sinon elle recommence a 1.
+static void note_attack(Fighter& f, Action a) {
+    const int k = attack_kind(a);
+    if (k == 0) { f.spam = false; return; }
+    if (f.rep_kind == k && f.rep_timer > 0) { if (f.rep_count < 255) f.rep_count++; }
+    else { f.rep_kind = (uint8_t)k; f.rep_count = 1; }
+    f.rep_timer = REPEAT_WINDOW;
+    f.spam = f.rep_count > REPEAT_LIMIT;
+}
+
 static void start_action(Fighter& f, Action a, int total) {
     f.action = a;
     f.action_frame = 0;
     f.action_total = (int16_t)total;
     f.hit_confirmed = false;
+    note_attack(f, a);
 }
 
 static bool can_act(const Fighter& f) {
@@ -323,7 +345,9 @@ static void apply_damage(Match& m, Fighter& atk, Fighter& dfn, int raw, bool kno
     const float def_mitig   = 1.14f - (dd.defense / 100.0f) * 0.26f;
     const float combo_scale = std::fmax(0.55f, 1.0f - dfn.combo_count * 0.12f);
 
-    const int dmg = imax(8, (int)std::lround(raw * power_scale * boss_scale * def_mitig * combo_scale * atk.dmg_scale));
+    const bool riposte_hit = atk.riposte > 0 && atk.power < 2 && !unblockable;
+    const float riposte_scale = riposte_hit ? RIPOSTE_BONUS : 1.0f;
+    const int dmg = imax(8, (int)std::lround(raw * power_scale * boss_scale * def_mitig * combo_scale * riposte_scale * atk.dmg_scale));
 
     const bool was_attacking =
         dfn.action == A_LIGHT || dfn.action == A_HEAVY || dfn.action == A_LOW_KICK ||
@@ -335,7 +359,12 @@ static void apply_damage(Match& m, Fighter& atk, Fighter& dfn, int raw, bool kno
     if (atk.power < 2) atk.ki = (uint8_t)imin(KI_MAX, atk.ki + 14);   // pas de Ki en retour d'un SUPER
     dfn.ki = (uint8_t)imin(KI_MAX, dfn.ki + 8);
 
-    if (was_attacking && !unblockable && m.banner_timer <= 0) {
+    dfn.rep_count = 0; dfn.spam = false;             // une serie interrompue par un coup recu est oubliee
+    if (riposte_hit) {
+        atk.riposte = 0;
+        atk.ki = (uint8_t)imin(KI_MAX, atk.ki + 6);
+        banner(m, BN_RIPOSTE, atk.id, 34);
+    } else if (was_attacking && !unblockable && m.banner_timer <= 0) {
         banner(m, BN_COUNTER, atk.id, 34);
     } else if (special_banner != BN_NONE) {
         banner(m, special_banner, atk.id, 36);
@@ -362,6 +391,30 @@ static void apply_damage(Match& m, Fighter& atk, Fighter& dfn, int raw, bool kno
     check_round_finish(m, atk, dfn);
 }
 
+// Le defenseur peut parer s'il est libre ou deja en garde (et au sol).
+static bool parry_ready(const Fighter& dfn) {
+    return dfn.y >= 0 && (can_act(dfn) || dfn.action == A_BLOCK_HIGH || dfn.action == A_BLOCK_LOW);
+}
+
+// Parade punitive : aucun degat, l'attaquant est etourdi, le parant obtient une riposte.
+static void do_parry(Match& m, Fighter& atk, Fighter& dfn, const Input* dfn_in) {
+    const bool low = dfn.action == A_BLOCK_LOW || dfn.action == A_CROUCH || (dfn_in && dfn_in->down);
+    start_action(dfn, low ? A_BLOCK_LOW : A_BLOCK_HIGH, PARRY_BLOCK);
+    dfn.vx = -dfn.facing * 0.8f;
+    dfn.riposte = RIPOSTE_FRAMES + 10;
+    dfn.ki = (uint8_t)imin(KI_MAX, dfn.ki + 10);
+    if (can_act(atk) || attack_kind(atk.action) != 0) {
+        start_action(atk, A_HITSTUN, PARRY_STUN);
+        atk.vx = -atk.facing * 3.2f;
+        atk.vy = 0;
+    }
+    atk.rep_count = 0; atk.rep_kind = 0; atk.spam = false;
+    m.hitstop = 6;
+    banner(m, BN_PARRY, dfn.id, 40);
+    sfx(m, SFX_BLOCK);
+    spawn_particles(m, dfn.x + dfn.facing * 12, 172 + dfn.y, Rgb{250, 204, 21}, 12, 3.0f, 3);
+}
+
 static void resolve_strike(Match& m, Fighter& atk, Fighter& dfn, int base, int chip,
                            int height, bool knockdown, const Input* dfn_in) {
     if (dfn.invuln > 0) return;
@@ -378,11 +431,15 @@ static void resolve_strike(Match& m, Fighter& atk, Fighter& dfn, int base, int c
         return;
     }
 
+    // 4e coup identique d'affilee : parade punitive (avant la garde ordinaire).
+    if (atk.spam && attack_kind(atk.action) != 0 && parry_ready(dfn)) { do_parry(m, atk, dfn, dfn_in); return; }
+
     const bool blocked = dfn_in && blocking_correctly(dfn, *dfn_in, height);
     if (blocked) {
         // Dégâts de gratte : ne tuent jamais (plancher à 1 PV).
         dfn.hp = (int16_t)imax(1, dfn.hp - imax(0, chip));
-        start_action(dfn, dfn_in->down ? A_BLOCK_LOW : A_BLOCK_HIGH, 12);
+        start_action(dfn, dfn_in->down ? A_BLOCK_LOW : A_BLOCK_HIGH, BLOCKSTUN);
+        dfn.riposte = RIPOSTE_FRAMES;
         dfn.vx = -dfn.facing * 1.9f;
         atk.ki = (uint8_t)imin(KI_MAX, atk.ki + 6);
         dfn.ki = (uint8_t)imin(KI_MAX, dfn.ki + 4);
@@ -453,6 +510,7 @@ static void spawn_projectile(Match& m, Fighter& f, const SpecialDef& sp) {
         p.damage = sp.damage; p.chip = sp.chip;
         p.life = 0; p.max_life = (int16_t)max_life;
         p.pulls = pulls;
+        p.spam = f.spam;
         (void)d;
         return;
     }
@@ -476,6 +534,7 @@ static constexpr float SUPER_REACH = 96.0f;
 
 static void trigger_super(Match& m, Fighter& f) {
     start_action(f, A_SPECIAL_1, SUPER_STARTUP + SUPER_ACTIVE + SUPER_RECOVERY);
+    f.rep_kind = 0; f.rep_count = 0; f.spam = false;       // un SUPER n'entre pas dans le compte des repetitions
     f.power = 2;
     f.ki = 0;
     f.invuln = SUPER_STARTUP;
@@ -655,6 +714,8 @@ static void update_fighter(Match& m, Fighter& f, Fighter& opp, const Input& in) 
 
     if (f.invuln > 0) f.invuln--;
     if (f.ai_cooldown > 0) f.ai_cooldown--;
+    if (f.rep_timer > 0 && --f.rep_timer == 0) f.rep_count = 0;
+    if (f.riposte > 0) --f.riposte;
     if (f.combo_timer > 0) {
         f.combo_timer--;
         if (f.combo_timer == 0) f.combo_count = 0;
@@ -754,7 +815,7 @@ static void update_fighter(Match& m, Fighter& f, Fighter& opp, const Input& in) 
                 f.action = A_LIGHT; f.action_frame = 0; f.action_total = 20;
             } else if (in.jp_b) {
                 f.hit_confirmed = false; sfx(m, SFX_WHIFF);
-                f.action = A_JUMP_ATTACK; f.action_frame = 0; f.action_total = 24;
+                f.action = A_JUMP_ATTACK; f.action_frame = 0; f.action_total = 24; note_attack(f, A_JUMP_ATTACK);
             }
         }
 
@@ -960,6 +1021,12 @@ static void update_projectiles(Match& m, const Input& p1_in, const Input& p2_in)
             if (m.phase == PH_FINISH_HIM && dfn.action == A_DIZZY) {
                 dfn.hp = 0;
                 trigger_standard_ko(m, atk, dfn);
+                p.alive = false;
+                continue;
+            }
+
+            if (p.spam && parry_ready(dfn)) {            // boule lancee en rafale : parade punitive
+                do_parry(m, atk, dfn, &dfn_in);
                 p.alive = false;
                 continue;
             }

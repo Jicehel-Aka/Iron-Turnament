@@ -907,6 +907,8 @@ static const char* banner_main(const Match& m, char* buf, size_t n) {
     case BN_TIME:        return T(STR_TIME_OVER);
     case BN_SUPER:       return def((FighterId)m.banner_arg).super_name;
     case BN_EX:          return "EX";
+    case BN_PARRY:       return T(STR_PARRY);
+    case BN_RIPOSTE:     return T(STR_RIPOSTE);
     default:             return "";
     }
 }
@@ -923,7 +925,7 @@ static const char* banner_sub(const Match& m, char* buf, size_t n) {
     case BN_PULL:        return w.specials[0].name;
     case BN_FINISH_HIM: case BN_FATALITY: case BN_HONOR:
         return w.finisher.name;
-    case BN_COUNTER:
+    case BN_COUNTER: case BN_PARRY:
         snprintf(buf, n, T(STR_PUNISHES), w.short_name); return buf;
     case BN_KO: case BN_PERFECT:
         snprintf(buf, n, T(STR_WINS_ROUND), w.short_name); return buf;
@@ -981,6 +983,7 @@ static void draw_banner(const Match& m) {
                       : m.banner == BN_FIGHT ? graphics_make_color(52, 211, 153)
                       : (m.banner == BN_SUPER || m.banner == BN_EX) ? graphics_make_color(250, 204, 21)
                       : (m.banner == BN_COUNTER || m.banner == BN_PULL) ? graphics_make_color(56, 189, 248)
+                      : (m.banner == BN_PARRY || m.banner == BN_RIPOSTE) ? graphics_make_color(250, 204, 21)
                       : ui::C_ACCENT;
     const int y = 78;
     const int w = graphics_text_width(main_t);

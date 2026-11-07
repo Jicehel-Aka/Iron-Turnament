@@ -18,7 +18,7 @@ namespace fight {
 
 static inline int sgn(float v) { return v > 0 ? 1 : (v < 0 ? -1 : 0); }
 
-Input ai_decide(Match& m, Fighter& ai, const Fighter& opp, Difficulty diff) {
+static Input ai_decide_raw(Match& m, Fighter& ai, const Fighter& opp, Difficulty diff) {
     Input in;
 
     // L'IA n'agit que pendant le combat ou la fenêtre « ACHEVEZ-LE ! ».
@@ -120,7 +120,10 @@ Input ai_decide(Match& m, Fighter& ai, const Fighter& opp, Difficulty diff) {
         default: break;
         }
         const int rem = opp.action_total - opp.action_frame;
-        if (active_end >= 0 && opp.y >= 0 && opp.action_frame >= active_end + 1 + react / 2 && rem >= 6 &&
+        const bool recovering = active_end >= 0 && opp.y >= 0 && opp.action_frame >= active_end + 1 + react / 2;
+        // Riposte : apres une garde ou une parade, l'adversaire etourdi (parade punitive) est a la merci de l'IA.
+        const bool stunned = ai.riposte > 0 && (opp.action == A_HITSTUN || opp.action == A_HITSTUN_GUT) && opp.y >= 0;
+        if ((recovering || stunned) && rem >= 6 &&
             opp.power < 2 && dist < 70.0f && rnd(m) < 0.90f * diff_scale) {
             const int rb = (int)std::lround((d.reach - 55) * 0.35f);
             if (rem >= 9 && dist <= 54.0f + rb - 4.0f) {
@@ -274,6 +277,23 @@ Input ai_decide(Match& m, Fighter& ai, const Fighter& opp, Difficulty diff) {
     }
 
     toward();
+    return in;
+}
+
+// Variete : un 4e coup identique d'affilee serait pare (parade punitive). Les niveaux Arcade et Maitre changent de
+// coup presque toujours ; le Novice n'y pense pas, ce qui donne au joueur une faille a exploiter.
+Input ai_decide(Match& m, Fighter& ai, const Fighter& opp, Difficulty diff) {
+    Input in = ai_decide_raw(m, ai, opp, diff);
+    const float avoid = diff == DIFF_NOVICE ? 0.0f : diff == DIFF_ARCADE ? 0.60f : 0.90f;
+    if (avoid > 0.0f && ai.rep_count >= REPEAT_LIMIT && ai.rep_timer > 0 && (in.jp_a != in.jp_b)) {
+        const int kind = in.jp_a ? (in.down ? 3 : 1) : (in.down ? 4 : 2);       // meme codage que attack_kind()
+        if (kind == ai.rep_kind && rnd(m) < avoid) {
+            const bool to_heavy = kind == 1 || kind == 3;
+            in.down = false;
+            in.a = in.jp_a = !to_heavy;
+            in.b = in.jp_b = to_heavy;
+        }
+    }
     return in;
 }
 

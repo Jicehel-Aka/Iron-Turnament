@@ -150,10 +150,10 @@ static void do_chain() {
 struct Bot {
     int kind; int t = 0; bool pa = false;
 };
-enum { B_SWEEP, B_JUMP, B_JAB, B_BALL, B_TURTLE, B_THROW, B_COUNT };
-static const char* BN[] = {"balayage", "saut+B", "jab", "boule", "tortue", "projection"};
+enum { B_SWEEP, B_JUMP, B_JAB, B_BALL, B_TURTLE, B_THROW, B_AI, B_COUNT };
+static const char* BN[] = {"balayage", "saut+B", "jab", "boule", "tortue", "projection", "joueur varie"};
 
-static Input bot_decide(Bot& b, const Match& m) {
+static Input bot_decide(Bot& b, Match& m) {
     const Fighter& me = m.f[0]; const Fighter& op = m.f[1];
     Input in;
     ++b.t;
@@ -161,6 +161,8 @@ static Input bot_decide(Bot& b, const Match& m) {
     const bool act = free_state(me);
     const bool pulse = (b.t & 1) == 0;
     switch (b.kind) {
+    case B_AI:   // proxy d'un joueur qui varie ses coups : l'IA niveau Arcade pilote P1
+        return ai_decide(m, m.f[0], m.f[1], DIFF_ARCADE);
     case B_SWEEP:
         if (!act) break;
         if (dist > 56) in.right = (op.x > me.x), in.left = !in.right;
@@ -209,8 +211,7 @@ static Input bot_decide(Bot& b, const Match& m) {
 static int play_bot(int kind, FighterId bf, FighterId af, Difficulty diff, uint32_t seed, int* timeouts) {
     static Match m;
     init_match(m, bf, af, false, seed);
-    m.f[0].dmg_scale = g_dmg_scale[2][bf];
-    m.f[1].dmg_scale = g_dmg_scale[diff][af];
+    set_ai_level(m, diff);                       // coefficients du niveau, clemence du mode facile comprise
     Bot b; b.kind = kind;
     int end_hold = 0;
     for (int frames = 0; frames < 60 * 60 * 8; ++frames) {
@@ -231,7 +232,7 @@ static int play_bot(int kind, FighterId bf, FighterId af, Difficulty diff, uint3
 }
 
 static void do_bots(int N) {
-    std::printf("=== Robots betes (P1, coefficient Maitre) contre l'IA : taux de victoire du ROBOT, %d matchs/paire ===\n", N);
+    std::printf("=== Robots (P1) contre l'IA : taux de victoire du ROBOT, %d matchs/paire. « joueur varie » = IA Arcade pilotant P1 ===\n", N);
     std::printf("%-11s %8s %8s %8s\n", "robot", "Novice", "Arcade", "Maitre");
     for (int k = 0; k < B_COUNT; ++k) {
         double r[3]; int to = 0;

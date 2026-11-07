@@ -110,11 +110,14 @@ static const FighterDef DEFS[FIGHTER_COUNT] = {
 };
 
 const FighterDef& def(FighterId id) { return DEFS[id]; }
+float g_level_ai_mult[3]    = { 0.65f, 1.0f, 1.0f };   // Novice : l IA cogne 35 % moins fort
+float g_level_human_mult[3] = { 1.10f, 1.0f, 1.0f };   // Novice : le joueur cogne 10 % plus fort
+
 float g_dmg_scale[3][FIGHTER_COUNT] = {
     // Kenji, Krowen, Mei-Lin, Titan, Nyxia, Malakor
-    { 0.825f, 0.600f, 0.903f, 1.130f, 1.195f, 1.498f },   // Novice
-    { 0.797f, 0.744f, 0.758f, 1.036f, 1.426f, 1.236f },   // Arcade
-    { 0.899f, 1.035f, 1.070f, 0.834f, 0.934f, 1.337f },   // Maitre (reference, aussi pour le joueur)
+    { 0.860f, 0.600f, 0.974f, 1.280f, 1.036f, 1.217f },   // Novice
+    { 0.934f, 0.793f, 0.821f, 1.055f, 1.241f, 1.351f },   // Arcade
+    { 0.883f, 1.039f, 1.067f, 0.782f, 0.863f, 1.271f },   // Maitre (reference, aussi pour le joueur)
 };
 
 void build_ladder(FighterId player, FighterId out[5]) {

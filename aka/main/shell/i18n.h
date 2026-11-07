@@ -83,6 +83,8 @@ enum StrId : uint16_t {
     STR_ROUND,
     STR_FIGHT,
     STR_COUNTER,
+    STR_PARRY,
+    STR_RIPOSTE,
     STR_THROW,
     STR_GUARD_BREAK,
     STR_PULL,
