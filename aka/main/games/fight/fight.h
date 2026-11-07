@@ -115,6 +115,10 @@ const FighterDef& def(FighterId id);
 // pilote par l'IA utilise la ligne de son niveau (cf. set_ai_level) : a chaque niveau, les six combattants
 // ont ainsi des chances egales face a l'IA du meme niveau.
 extern float g_dmg_scale[3][FIGHTER_COUNT];   // [niveau Novice/Arcade/Maitre][combattant]
+// Clemence du mode facile (set_ai_level) : l'IA fait moins de degats, le joueur (P1) un peu plus. Les tests
+// d'equilibrage IA contre IA utilisent g_dmg_scale seul et ne sont pas touches.
+extern float g_level_ai_mult[3];      // multiplicateur des degats de l'IA par niveau
+extern float g_level_human_mult[3];   // multiplicateur des degats du joueur par niveau
 
 // Echelle du mode Tournoi : 3 adversaires, le rival jure, puis Malakor (boss).
 // Ecrit 5 identifiants dans `out`.
@@ -130,6 +134,21 @@ enum Difficulty : uint8_t { DIFF_NOVICE = 0, DIFF_ARCADE = 1, DIFF_MASTER = 2 };
 //   - EX    (50 Ki) : special + C maintenu avec A ou B -> degats x1.4, depart plus vif, invulnerable au depart ;
 //   - CANCEL (50 Ki) : un EX annule la fin d'un special qui a touche ou ete garde ;
 //   - SUPER (100 Ki) : bas + C -> charge imblocable, un coup unique par combattant.
+// Tampon d'entree : duree (images logiques a 60 Hz, ~83 ms) pendant laquelle une pression est memorisee.
+constexpr int INPUT_BUFFER = 5;
+
+// Coups repetes : le (REPEAT_LIMIT + 1)e coup identique d'affilee (meme touche, serie de moins de REPEAT_WINDOW
+// images entre deux lancers) est PARE automatiquement par l'adversaire s'il est libre ou en garde : l'attaquant est
+// etourdi PARRY_STUN images et le parant obtient une riposte. Aucun effet sur les projections ni les SUPER.
+constexpr int REPEAT_LIMIT  = 3;
+constexpr int REPEAT_WINDOW = 150;
+constexpr int PARRY_STUN    = 30;
+constexpr int PARRY_BLOCK   = 7;
+// Garde : la garde dure BLOCKSTUN images (12 avant) et ouvre RIPOSTE_FRAMES images pendant lesquelles le
+// prochain coup qui touche fait +25 % de degats (RIPOSTE !).
+constexpr int BLOCKSTUN        = 9;
+constexpr int RIPOSTE_FRAMES   = 30;
+constexpr float RIPOSTE_BONUS  = 1.25f;
 constexpr int KI_MAX = 100, KI_EX_COST = 50, KI_SUPER_COST = 100;
 constexpr int SUPER_STARTUP = 16, SUPER_ACTIVE = 8, SUPER_RECOVERY = 30;   // images logiques du SUPER
 
@@ -163,6 +182,11 @@ struct Fighter {
     int16_t   ai_cooldown;
     float     dmg_scale;          // coefficient d'equilibrage des degats infliges (cf. g_dmg_scale)
     float     walk_dist;          // distance cumulee a la marche : pilote le cycle de pas (pas de glissement)
+    uint8_t   buf_a, buf_b, buf_sp;   // tampon d'entree : images restantes pour une pression A / B / C deja faite
+    uint8_t   rep_kind, rep_count;    // dernier coup lance et nombre de lancers identiques d'affilee
+    uint8_t   rep_timer;              // images avant l'oubli de la serie
+    bool      spam;                   // le coup en cours est un 4e (ou plus) identique : parade punitive possible
+    uint8_t   riposte;                // images restantes de la fenetre de riposte (apres une garde ou une parade)
 };
 
 enum ProjKind : uint8_t { PK_KI_WAVE, PK_HARPOON, PK_STEEL_FAN, PK_LIGHTNING, PK_STASIS_ORB, PK_DARK_WAVE };
@@ -177,6 +201,7 @@ struct Projectile {
     int16_t  damage, chip;
     int16_t  life, max_life;
     bool     pulls;
+    bool     spam;                // lance par un coup repete : pare s'il touche un adversaire libre
 };
 
 struct Particle {
@@ -209,7 +234,9 @@ enum BannerId : uint8_t {
     BN_PERFECT,         // PARFAIT ! / `arg` remporte la manche
     BN_TIME,            // TEMPS ECOULE ! / `arg` l'emporte aux points
     BN_SUPER,           // nom du SUPER de `arg`
-    BN_EX               // EX ! / nom du special de `arg`
+    BN_EX,              // EX ! / nom du special de `arg`
+    BN_PARRY,           // PARADE ! (parade punitive d'un coup repete)
+    BN_RIPOSTE          // RIPOSTE ! (coup apres une garde)
 };
 
 // Evenements sonores de la derniere image (OR de bits) ; la vue les consomme.

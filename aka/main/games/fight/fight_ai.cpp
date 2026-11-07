@@ -18,7 +18,7 @@ namespace fight {
 
 static inline int sgn(float v) { return v > 0 ? 1 : (v < 0 ? -1 : 0); }
 
-Input ai_decide(Match& m, Fighter& ai, const Fighter& opp, Difficulty diff) {
+static Input ai_decide_raw(Match& m, Fighter& ai, const Fighter& opp, Difficulty diff) {
     Input in;
 
     // L'IA n'agit que pendant le combat ou la fenêtre « ACHEVEZ-LE ! ».
@@ -102,13 +102,48 @@ Input ai_decide(Match& m, Fighter& ai, const Fighter& opp, Difficulty diff) {
         }
     }
 
+    // --- 3b. Punition : un coup adverse rate (ou garde) laisse l'adversaire sans defense -------------------
+    // L'IA ne le voyait pas : un robot qui repete un seul coup (le balayage) gagnait 50 % contre le niveau Maitre.
+    // Elle reagit apres `react / 2` images et jamais avec une certitude absolue (probabilite x niveau).
+    if (m.phase == PH_FIGHT && ai.y >= 0 &&
+        (ai.action == A_IDLE || ai.action == A_WALK_FWD || ai.action == A_WALK_BACK || ai.action == A_CROUCH)) {
+        int active_end = -1;
+        switch (opp.action) {
+        case A_LIGHT:     active_end = 9;  break;
+        case A_UPPERCUT:  active_end = 10; break;
+        case A_HEAVY:     active_end = 13; break;
+        case A_LOW_KICK:  active_end = 12; break;
+        case A_SPECIAL_1: case A_SPECIAL_2: case A_SPECIAL_3: {
+            const SpecialDef& sp = def(opp.id).specials[opp.action - A_SPECIAL_1];
+            active_end = sp.startup + sp.active;
+            break; }
+        default: break;
+        }
+        const int rem = opp.action_total - opp.action_frame;
+        const bool recovering = active_end >= 0 && opp.y >= 0 && opp.action_frame >= active_end + 1 + react / 2;
+        // Riposte : apres une garde ou une parade, l'adversaire etourdi (parade punitive) est a la merci de l'IA.
+        const bool stunned = ai.riposte > 0 && (opp.action == A_HITSTUN || opp.action == A_HITSTUN_GUT) && opp.y >= 0;
+        if ((recovering || stunned) && rem >= 6 &&
+            opp.power < 2 && dist < 70.0f && rnd(m) < 0.90f * diff_scale) {
+            const int rb = (int)std::lround((d.reach - 55) * 0.35f);
+            if (rem >= 9 && dist <= 54.0f + rb - 4.0f) {
+                toward(); in.b = true; in.jp_b = true; ai.ai_cooldown = 14; return in;
+            }
+            if (dist <= 42.0f + rb - 3.0f) {
+                toward(); in.a = true; in.jp_a = true; ai.ai_cooldown = 11; return in;
+            }
+            // Retombee longue (balayage rate) : l'IA s'avance pour etre a portee avant la fin.
+            if (rem >= 13 && dist > 42.0f + rb - 3.0f) { toward(); return in; }
+        }
+    }
+
     // --- 4. Défense au corps-à-corps --------------------------------------------
     const bool opp_attacking =
         opp.action == A_LIGHT || opp.action == A_HEAVY || opp.action == A_LOW_KICK ||
         opp.action == A_SPECIAL_1 || opp.action == A_SPECIAL_2 || opp.action == A_SPECIAL_3;
 
     if (opp_attacking && dist < 66.0f) {
-        const float block = (0.32f + pr.patience * 0.5f) * diff_scale;
+        const float block = (0.50f + pr.patience * 0.45f) * diff_scale;
         if (rnd(m) < block) {
             away();
             if (opp.action == A_LOW_KICK) in.down = true;
@@ -242,6 +277,23 @@ Input ai_decide(Match& m, Fighter& ai, const Fighter& opp, Difficulty diff) {
     }
 
     toward();
+    return in;
+}
+
+// Variete : un 4e coup identique d'affilee serait pare (parade punitive). Les niveaux Arcade et Maitre changent de
+// coup presque toujours ; le Novice n'y pense pas, ce qui donne au joueur une faille a exploiter.
+Input ai_decide(Match& m, Fighter& ai, const Fighter& opp, Difficulty diff) {
+    Input in = ai_decide_raw(m, ai, opp, diff);
+    const float avoid = diff == DIFF_NOVICE ? 0.0f : diff == DIFF_ARCADE ? 0.60f : 0.90f;
+    if (avoid > 0.0f && ai.rep_count >= REPEAT_LIMIT && ai.rep_timer > 0 && (in.jp_a != in.jp_b)) {
+        const int kind = in.jp_a ? (in.down ? 3 : 1) : (in.down ? 4 : 2);       // meme codage que attack_kind()
+        if (kind == ai.rep_kind && rnd(m) < avoid) {
+            const bool to_heavy = kind == 1 || kind == 3;
+            in.down = false;
+            in.a = in.jp_a = !to_heavy;
+            in.b = in.jp_b = to_heavy;
+        }
+    }
     return in;
 }
 

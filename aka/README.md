@@ -73,6 +73,14 @@ sont cherchées à côté de l'exécutable, ou dans `sd/IRONTOURNAMENT`. Audio :
 Options > **Manches** (1, 2 ou 3 à gagner) et **Temps** (30 s, 60 s, 99 s ou illimité), sauvegardées dans `config.dat`
 (un ancien `config.dat` reste lisible). Éventail de Mei-Lin rééquilibré comme dans le prototype web (démarrage 14, actif 14, récupération 11).
 
+## Décors animés
+Chaque décor a ses effets, dessinés par-dessus l'image fixe (`fx_stage` dans `fight_view.cpp`) : **Kyoto** pétales de cerisier et lucioles ;
+**fosse d'obsidienne** torches qui vacillent, braises montantes, scintillement de la lave ; **port de Hong Kong** pluie et rides sur le sol mouillé ;
+**forge** braises du four, étincelles de la coulée, vapeur de la cheminée, neige derrière la baie ; **Atacama** braseros et orage (éclairs +
+éclaircissement du ciel) ; **salle du trône** flammes violettes, torches dorées, vitraux illuminés par l'orage. Les effets sont **sans état**
+(fonction pure de l'horloge du combat, aucun tirage dans le hasard du moteur) : ils ne modifient ni le gameplay ni la synchronisation réseau,
+et coûtent une centaine de petites primitives par image.
+
 ## Jauge de Ki
 Barre bleue sous la vie, conservée d'une manche à l'autre. Gains : +14 en touchant, +8 en encaissant, +6 / +4 en gardant
 (attaquant / défenseur). Dépenses : **EX** à 50 Ki (spécial lancé avec C maintenu + A ou B : dégâts ×1,4, départ plus vif,
@@ -111,10 +119,46 @@ de quelques dizaines de ms de latence ; ce serait un autre chantier (retour arri
 `sh test/run_balance.sh [parties] [niveau 0-2]` joue des milliers de matchs complets sur PC (1 à 30 s selon le nombre) et affiche
 la matrice de victoires des six combattants, la durée moyenne et l'écart entre niveaux. `--tune` règle automatiquement les
 coefficients de dégâts `g_dmg_scale[niveau][combattant]` (fight_data.cpp) : le joueur utilise toujours la ligne Maître, l'IA
-celle de son niveau. Résultats actuels, Ki compris (150 matchs par paire) : taux de victoire moyen par combattant de 44 à 58 %
-(Maître), 43 à 62 % (Arcade), 45 à 57 % (Novice) ; Arcade bat Novice 81 %, Maître bat Arcade 63 %.
+celle de son niveau. Résultats actuels (100 matchs par paire) : taux de victoire moyen par combattant de 48 à 56 % (Maître), 46 à 57 % (Arcade),
+45 à 55 % (Novice) ; Arcade bat Novice 77 %, Maître bat Arcade 64 %.
 Le balancement est celui de l'IA : un joueur humain n'en profitera pas de la même façon ; certaines paires restent très
-déséquilibrées (Kenji/Krowen, Krowen/Nyxia). Avant ce réglage, ~95 % des dégâts venaient des coups spéciaux et Titan gagnait 98 % de ses matchs.
+déséquilibrées (Krowen/Nyxia). Avant ce réglage, ~95 % des dégâts venaient des coups spéciaux et Titan gagnait 98 % de ses matchs.
+
+## Audit critique du moteur (banc `sh test/run_audit.sh`)
+Un banc de mesure (`test/audit.cpp`) calcule les données d'images de chaque coup (avantage sur touche / garde), les
+enchaînements réels et le comportement de robots « bêtes » (un seul coup répété) contre l'IA. Défauts **mesurés** puis corrigés :
+
+| Défaut constaté | Mesure avant | Correction | Mesure après |
+|---|---|---|---|
+| Aucun tampon d'entrée : une touche pressée 1 image trop tôt est perdue | — | tampon de 5 images (≈ 83 ms) pour A, B et C, exécuté dès que le combattant est libre (`INPUT_BUFFER`) | testé (`test_input_buffer`) ; inclus dans le condensé réseau |
+| Un robot qui répète le **balayage** battait l'IA | 82 % / 69 % / 50 % (Novice / Arcade / Maître) | l'IA punit un coup raté ou gardé (et s'avance si la retombée est longue), garde plus souvent ; le balayage retombe 4 images plus tard (23 → 27) | 45 % / 36 % / 16 % (puis 28 % / 7 % / 4 % avec la parade punitive) |
+| Même robot « saut + B » | 68 % / 35 % / 33 % | idem | 48 % / 35 % / 18 % |
+| Robot « jab » | 68 % / 42 % / 27 % | idem | 68 % / 37 % / 20 % |
+| **Enchaînement infini** : un balayage rattrapait l'adversaire encore couché (38 images de chute pour 27 de retombée), surtout dans un coin ; les projectiles l'ignoraient déjà, pas la mêlée | boucle de 6 à 9 touches (25 à 46 % des PV) sur cible inerte | un adversaire à terre est intouchable en mêlée jusqu'au relevé | 1 touche (`test_ground_rules`, vérifié par mutation) |
+| Un coup léger (A, bas + A) faisait **glisser l'adversaire de 34 px** au lieu de ~9 : `A_HITSTUN_GUT` oublié dans la friction au sol | 34 px | friction appliquée | ≈ 9 px |
+
+Les coefficients de dégâts ont été re-réglés (`--tune`) car ces règles changent l'équilibre.
+
+**Encore à améliorer (non fait, par ordre d'intérêt)** : mode entraînement (adversaire fixe, affichage des images
+d'avantage) ; liste des coups dans la pause ; vrais enchaînements (les coups normaux ne s'enchaînent pas : le recul de
+~6 px sort le suivant de portée, seuls les annulations en spécial font des combos) ; défense du joueur (pas de
+contre-projection ni de garde-poussée) ; 
+tous les coups sautés sont « hauts » (la garde accroupie ne les arrête pas), choix de conception à valider ; compteur de
+touches (il faudrait d'abord distinguer vrai combo et coups rapprochés) ; rollback pour le jeu par Internet.
+
+## Coups répétés, garde et mode facile
+- **Parade punitive** : le 4ᵉ coup identique d'affilée (même touche ou même spécial, séries de moins de 2,5 s entre deux
+  lancers) est **paré automatiquement** par l'adversaire s'il est libre ou déjà en garde : aucun dégât, l'attaquant est
+  étourdi 30 images (0,5 s), bandeau « PARADE ! ». Vaut pour le joueur comme pour l'IA, y compris les boules de feu lancées
+  en rafale. Un coup reçu, un autre coup ou 2,5 s d'attente remettent le compte à zéro ; ni les projections ni les SUPER ne comptent.
+- **Garde et riposte** : une garde dure 9 images (12 avant) et ouvre une fenêtre de 30 images pendant laquelle le coup
+  suivant qui touche fait **+25 %** de dégâts (« RIPOSTE ! », +6 Ki). Une parade ouvre la même fenêtre (40 images). Un coup lourd
+  gardé laisse donc le temps de répliquer.
+- **Mode facile** (Novice) : l'IA inflige 35 % de dégâts en moins et le joueur 10 % de plus (`g_level_ai_mult` / `g_level_human_mult`) ;
+  elle ne varie pas ses coups (elle se fait donc parer), alors que Arcade et Maître changent de coup presque toujours.
+  Mesure (`sh test/run_audit.sh bots`, victoires du robot) : un robot qui répète une seule action (balayage, jab, boule, saut)
+  gagne 5 à 39 % contre Novice, 4 à 13 % contre Arcade/Maître, alors qu'un joueur qui varie (IA Arcade pilotant P1) gagne 84 %
+  contre Novice, 52 % contre Arcade, 39 % contre Maître. Le robot « joueur varié » n'est qu'un substitut : à confirmer avec un humain.
 
 ## Cohérence physique des animations
 Audit mesuré sur les planches (`tools/gen_sprites.py` + moteur) :
