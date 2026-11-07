@@ -363,6 +363,71 @@ static void test_options_and_physics() {
 
 
 // Jauge de Ki : gains, EX (50), Ki Cancel, SUPER (100), conservation entre manches.
+static void test_ground_rules() {
+    std::printf("[regles au sol]\n");
+    Match m;
+
+    // Un adversaire a terre (chute) est intouchable en melee : pas de balayage en boucle.
+    setup(m, KENJI, TITAN, 36);
+    m.f[1].hp = m.f[1].max_hp = 3000;
+    { Input in; in.down = in.b = in.jp_b = true; st(m, in); }
+    for (int i = 0; i < 12 && m.f[1].action != A_KNOCKDOWN; ++i) st(m, none());
+    CHECK(m.f[1].action == A_KNOCKDOWN);
+    for (int i = 0; i < 6 && m.f[1].y < 0; ++i) st(m, none());      // atterrissage
+    m.f[1].x = m.f[0].x + 30; m.f[1].y = 0; m.f[1].vx = 0; m.f[1].vy = 0;
+    const int hp_down = m.f[1].hp;
+    for (int i = 0; i < 40 && m.f[0].action != A_IDLE; ++i) st(m, none());
+    { Input in; in.down = in.b = in.jp_b = true; st(m, in); }
+    for (int i = 0; i < 14; ++i) { m.f[1].x = m.f[0].x + 30; st(m, none()); if (m.f[1].action != A_KNOCKDOWN) break; }
+    CHECK(m.f[1].hp == hp_down || m.f[1].action != A_KNOCKDOWN);   // aucune touche tant qu'il est couche
+
+    // Coup leger : l'adversaire recule d'une dizaine de pixels (friction), pas de glissade de 34 px.
+    setup(m, KENJI, TITAN, 36);
+    m.f[1].hp = m.f[1].max_hp = 3000;
+    const float x0 = m.f[1].x;
+    { Input in; in.a = in.jp_a = true; st(m, in); }
+    for (int i = 0; i < 40; ++i) st(m, none());
+    CHECK(m.f[1].hp < 3000);
+    CHECK(m.f[1].x - x0 < 20.0f);
+
+    // Balayage : 27 images au total (retombee de 4 images de plus qu'avant).
+    setup(m, KENJI, TITAN, 300);
+    { Input in; in.down = in.b = in.jp_b = true; st(m, in); }
+    CHECK(m.f[0].action == A_LOW_KICK);
+    CHECK(m.f[0].action_total >= 23);
+}
+
+static void test_input_buffer() {
+    std::printf("[tampon d'entree]\n");
+    Match m;
+
+    // Sans tampon, un A presse 3 images avant la fin d'un coup leger serait perdu : ici il part des que possible.
+    setup(m, KENJI, TITAN, 200);
+    { Input in; in.a = in.jp_a = true; st(m, in); }
+    CHECK(m.f[0].action == A_LIGHT);
+    int guard = 0;
+    while (m.f[0].action == A_LIGHT && m.f[0].action_total - m.f[0].action_frame > 3 && ++guard < 100) st(m, none());
+    CHECK(m.f[0].action == A_LIGHT);
+    { Input in; in.a = in.jp_a = true; st(m, in); }                 // presse trop tot (encore ~2 images de fin)
+    for (int i = 0; i < 4; ++i) { st(m, none()); }
+    CHECK(m.f[0].action == A_LIGHT && m.f[0].action_frame <= 4);     // 2e coup lance sans nouvelle pression
+
+    // Une pression trop ancienne (> INPUT_BUFFER images avant la fin) est oubliee.
+    setup(m, KENJI, TITAN, 200);
+    { Input in; in.a = in.jp_a = true; st(m, in); }
+    st(m, none());
+    { Input in; in.a = in.jp_a = true; st(m, in); }                 // tout debut du 1er coup : trop tot
+    for (int i = 0; i < 40; ++i) st(m, none());
+    CHECK(m.f[0].action == A_IDLE);
+
+    // Le tampon ne declenche jamais deux coups pour une seule pression.
+    setup(m, KENJI, TITAN, 200);
+    { Input in; in.a = in.jp_a = true; st(m, in); }
+    int starts = 0; Action prev = m.f[0].action;
+    for (int i = 0; i < 80; ++i) { st(m, none()); if (m.f[0].action == A_LIGHT && prev != A_LIGHT) ++starts; prev = m.f[0].action; }
+    CHECK(starts == 0);
+}
+
 static void test_ki() {
     std::printf("[ki]\n");
     Match m;
@@ -449,6 +514,8 @@ int main() {
     test_timeout();
     test_options_and_physics();
     test_ki();
+    test_input_buffer();
+    test_ground_rules();
     test_round_flow();
     test_boss_boost();
     test_determinism();

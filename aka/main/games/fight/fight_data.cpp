@@ -112,9 +112,9 @@ static const FighterDef DEFS[FIGHTER_COUNT] = {
 const FighterDef& def(FighterId id) { return DEFS[id]; }
 float g_dmg_scale[3][FIGHTER_COUNT] = {
     // Kenji, Krowen, Mei-Lin, Titan, Nyxia, Malakor
-    { 0.876f, 0.936f, 0.878f, 1.253f, 0.877f, 1.007f },   // Novice
-    { 1.074f, 0.856f, 0.600f, 1.600f, 1.600f, 1.305f },   // Arcade
-    { 0.80f, 1.22f, 1.05f, 0.98f, 1.10f, 1.11f },   // Maitre (reference, aussi pour le joueur)
+    { 0.825f, 0.600f, 0.903f, 1.130f, 1.195f, 1.498f },   // Novice
+    { 0.797f, 0.744f, 0.758f, 1.036f, 1.426f, 1.236f },   // Arcade
+    { 0.899f, 1.035f, 1.070f, 0.834f, 0.934f, 1.337f },   // Maitre (reference, aussi pour le joueur)
 };
 
 void build_ladder(FighterId player, FighterId out[5]) {

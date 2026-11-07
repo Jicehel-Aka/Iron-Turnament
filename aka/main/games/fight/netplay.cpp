@@ -120,6 +120,7 @@ uint32_t hash_match(const Match& m) {
         h.u32((uint32_t)f.hp); h.u8(f.ki); h.u8(f.power); h.u8(f.action);
         h.u32((uint32_t)f.action_frame); h.u8(f.combo_count); h.u32((uint32_t)f.combo_timer);
         h.u32((uint32_t)f.invuln); h.u8(f.hit_confirmed); h.u32((uint32_t)f.ai_cooldown);
+        h.u8(f.buf_a); h.u8(f.buf_b); h.u8(f.buf_sp);
     }
     for (int i = 0; i < MAX_PROJ; ++i) {
         const Projectile& p = m.proj[i];

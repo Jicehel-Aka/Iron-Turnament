@@ -130,6 +130,8 @@ enum Difficulty : uint8_t { DIFF_NOVICE = 0, DIFF_ARCADE = 1, DIFF_MASTER = 2 };
 //   - EX    (50 Ki) : special + C maintenu avec A ou B -> degats x1.4, depart plus vif, invulnerable au depart ;
 //   - CANCEL (50 Ki) : un EX annule la fin d'un special qui a touche ou ete garde ;
 //   - SUPER (100 Ki) : bas + C -> charge imblocable, un coup unique par combattant.
+// Tampon d'entree : duree (images logiques a 60 Hz, ~83 ms) pendant laquelle une pression est memorisee.
+constexpr int INPUT_BUFFER = 5;
 constexpr int KI_MAX = 100, KI_EX_COST = 50, KI_SUPER_COST = 100;
 constexpr int SUPER_STARTUP = 16, SUPER_ACTIVE = 8, SUPER_RECOVERY = 30;   // images logiques du SUPER
 
@@ -163,6 +165,7 @@ struct Fighter {
     int16_t   ai_cooldown;
     float     dmg_scale;          // coefficient d'equilibrage des degats infliges (cf. g_dmg_scale)
     float     walk_dist;          // distance cumulee a la marche : pilote le cycle de pas (pas de glissement)
+    uint8_t   buf_a, buf_b, buf_sp;   // tampon d'entree : images restantes pour une pression A / B / C deja faite
 };
 
 enum ProjKind : uint8_t { PK_KI_WAVE, PK_HARPOON, PK_STEEL_FAN, PK_LIGHTNING, PK_STASIS_ORB, PK_DARK_WAVE };

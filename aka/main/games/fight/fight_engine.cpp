@@ -250,7 +250,7 @@ static void apply_physics(Fighter& f) {
 
     // Friction au sol en hitstun / garde / chute.
     if (f.y >= FLOOR_Y &&
-        (f.action == A_HITSTUN || f.action == A_BLOCK_HIGH || f.action == A_BLOCK_LOW ||
+        (f.action == A_HITSTUN || f.action == A_HITSTUN_GUT || f.action == A_BLOCK_HIGH || f.action == A_BLOCK_LOW ||
          f.action == A_KNOCKDOWN || f.action == A_DEFEAT)) {
         f.vx *= 0.82f;
     }
@@ -365,6 +365,10 @@ static void apply_damage(Match& m, Fighter& atk, Fighter& dfn, int raw, bool kno
 static void resolve_strike(Match& m, Fighter& atk, Fighter& dfn, int base, int chip,
                            int height, bool knockdown, const Input* dfn_in) {
     if (dfn.invuln > 0) return;
+    // Adversaire a terre (chute) : intouchable jusqu'au relevé, comme pour les projectiles. Sans cette regle,
+    // un balayage en boucle rattrapait la cible encore couchee (38 images de chute > 27 de retombee) :
+    // enchainement infini, surtout dans un coin.
+    if (dfn.action == A_KNOCKDOWN) return;
 
     // Esquives actives.
     if ((dfn.action == A_EVADE_HIGH && height != 1) ||
@@ -698,9 +702,23 @@ static void update_fighter(Match& m, Fighter& f, Fighter& opp, const Input& in) 
 
     f.action_frame++;
 
+    // Tampon d'entree : une touche pressee dans les INPUT_BUFFER dernieres images avant de redevenir libre
+    // est executee des que le combattant peut agir (comme dans les jeux d'arcade ; sans lui, une touche
+    // appuyee 1 image trop tot est perdue). Seuls les fronts montants A, B et C sont memorises.
+    if (in.jp_a)       f.buf_a  = INPUT_BUFFER; else if (f.buf_a)  --f.buf_a;
+    if (in.jp_b)       f.buf_b  = INPUT_BUFFER; else if (f.buf_b)  --f.buf_b;
+    if (in.jp_special) f.buf_sp = INPUT_BUFFER; else if (f.buf_sp) --f.buf_sp;
+    Input e = in;                                    // entrees effectives (tampon compris)
+    if (can_act(f) && f.y >= 0) {
+        if (f.buf_a)  e.jp_a = true;
+        if (f.buf_b)  e.jp_b = true;
+        if (f.buf_sp) e.jp_special = true;
+    }
+    auto clear_buffer = [&f]() { f.buf_a = f.buf_b = f.buf_sp = 0; };
+
     // Demande de puissance : EX = C maintenu avec A ou B (50 Ki) ; SUPER = bas + C (100 Ki).
-    const bool ex_req    = in.special && (in.a || in.b) && f.ki >= KI_EX_COST;
-    const bool super_req = in.down && in.jp_special && f.ki >= KI_SUPER_COST && m.phase == PH_FIGHT;
+    const bool ex_req    = e.special && (e.a || e.b) && f.ki >= KI_EX_COST;
+    const bool super_req = e.down && e.jp_special && f.ki >= KI_SUPER_COST && m.phase == PH_FIGHT;
 
     // Annulation d'un normal qui a touché par un spécial (« 2-in-1 cancel »), et « Ki Cancel » :
     // un EX peut annuler la fin d'un spécial qui a touché ou ete garde (50 Ki).
@@ -713,13 +731,15 @@ static void update_fighter(Match& m, Fighter& f, Fighter& opp, const Input& in) 
                          def(f.id).specials[f.action - A_SPECIAL_1].active;
 
     if (super_req && ((can_act(f) && f.y >= 0) || special_cancel)) {
+        clear_buffer();
         trigger_super(m, f);
         apply_physics(f);
         return;
     }
     if ((can_act(f) && f.y >= 0) || special_cancel || ki_cancel) {
-        const int k = detect_special(f, in);
+        const int k = detect_special(f, e);
         if (k >= 0) {
+            clear_buffer();
             trigger_special(m, f, k, ex_req ? 1 : 0);
             apply_physics(f);
             return;
@@ -756,10 +776,11 @@ static void update_fighter(Match& m, Fighter& f, Fighter& opp, const Input& in) 
     const bool fwd  = f.facing == 1 ? in.right : in.left;
     const bool back = f.facing == 1 ? in.left  : in.right;
 
-    const bool both_just = (in.jp_a && in.b) || (in.jp_b && in.a);
-    const bool evade_trigger = in.jp_special || both_just;
+    const bool both_just = (e.jp_a && in.b) || (e.jp_b && in.a);
+    const bool evade_trigger = e.jp_special || both_just;
 
     if (evade_trigger && in.down) {
+        clear_buffer();
         sfx(m, SFX_WHIFF);
         if (back) { f.vx = -f.facing * 1.4f; start_action(f, A_EVADE_LOW, 18); }
         else      { f.vx =  f.facing * 0.8f; start_action(f, A_EVADE_HIGH, 17); }
@@ -781,6 +802,7 @@ static void update_fighter(Match& m, Fighter& f, Fighter& opp, const Input& in) 
     }
 
     if (both_just && std::fabs(f.x - opp.x) <= 36.0f && opp.y >= -6 && opp.invuln <= 0) {
+        clear_buffer();
         normal_throw(m, f, opp);
         apply_physics(f);
         return;
@@ -788,16 +810,18 @@ static void update_fighter(Match& m, Fighter& f, Fighter& opp, const Input& in) 
 
     // Coups normaux.
     const int rec_bonus = (int)std::lround((d.recovery - 55) * 0.08f);
-    if (in.jp_a) {
+    if (e.jp_a) {
+        clear_buffer();
         f.vx = 0; sfx(m, SFX_WHIFF);
         if (in.down) start_action(f, A_UPPERCUT, imax(14, 18 - rec_bonus));
         else         start_action(f, A_LIGHT,    imax(12, 15 - rec_bonus));
         apply_physics(f);
         return;
     }
-    if (in.jp_b) {
+    if (e.jp_b) {
+        clear_buffer();
         f.vx = 0; sfx(m, SFX_WHIFF);
-        if (in.down) start_action(f, A_LOW_KICK, imax(19, 23 - rec_bonus));
+        if (in.down) start_action(f, A_LOW_KICK, imax(23, 27 - rec_bonus));   // balayage : +4 images de retombee (risque reel)
         else         start_action(f, A_HEAVY,    imax(20, 24 - rec_bonus));
         apply_physics(f);
         return;

@@ -102,13 +102,45 @@ Input ai_decide(Match& m, Fighter& ai, const Fighter& opp, Difficulty diff) {
         }
     }
 
+    // --- 3b. Punition : un coup adverse rate (ou garde) laisse l'adversaire sans defense -------------------
+    // L'IA ne le voyait pas : un robot qui repete un seul coup (le balayage) gagnait 50 % contre le niveau Maitre.
+    // Elle reagit apres `react / 2` images et jamais avec une certitude absolue (probabilite x niveau).
+    if (m.phase == PH_FIGHT && ai.y >= 0 &&
+        (ai.action == A_IDLE || ai.action == A_WALK_FWD || ai.action == A_WALK_BACK || ai.action == A_CROUCH)) {
+        int active_end = -1;
+        switch (opp.action) {
+        case A_LIGHT:     active_end = 9;  break;
+        case A_UPPERCUT:  active_end = 10; break;
+        case A_HEAVY:     active_end = 13; break;
+        case A_LOW_KICK:  active_end = 12; break;
+        case A_SPECIAL_1: case A_SPECIAL_2: case A_SPECIAL_3: {
+            const SpecialDef& sp = def(opp.id).specials[opp.action - A_SPECIAL_1];
+            active_end = sp.startup + sp.active;
+            break; }
+        default: break;
+        }
+        const int rem = opp.action_total - opp.action_frame;
+        if (active_end >= 0 && opp.y >= 0 && opp.action_frame >= active_end + 1 + react / 2 && rem >= 6 &&
+            opp.power < 2 && dist < 70.0f && rnd(m) < 0.90f * diff_scale) {
+            const int rb = (int)std::lround((d.reach - 55) * 0.35f);
+            if (rem >= 9 && dist <= 54.0f + rb - 4.0f) {
+                toward(); in.b = true; in.jp_b = true; ai.ai_cooldown = 14; return in;
+            }
+            if (dist <= 42.0f + rb - 3.0f) {
+                toward(); in.a = true; in.jp_a = true; ai.ai_cooldown = 11; return in;
+            }
+            // Retombee longue (balayage rate) : l'IA s'avance pour etre a portee avant la fin.
+            if (rem >= 13 && dist > 42.0f + rb - 3.0f) { toward(); return in; }
+        }
+    }
+
     // --- 4. Défense au corps-à-corps --------------------------------------------
     const bool opp_attacking =
         opp.action == A_LIGHT || opp.action == A_HEAVY || opp.action == A_LOW_KICK ||
         opp.action == A_SPECIAL_1 || opp.action == A_SPECIAL_2 || opp.action == A_SPECIAL_3;
 
     if (opp_attacking && dist < 66.0f) {
-        const float block = (0.32f + pr.patience * 0.5f) * diff_scale;
+        const float block = (0.50f + pr.patience * 0.45f) * diff_scale;
         if (rnd(m) < block) {
             away();
             if (opp.action == A_LOW_KICK) in.down = true;
