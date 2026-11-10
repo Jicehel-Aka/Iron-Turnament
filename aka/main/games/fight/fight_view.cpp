@@ -1059,20 +1059,31 @@ void draw_match(const Match& m, uint32_t now_ms) {
 // -----------------------------------------------------------------------------
 // Sélection du combattant
 // -----------------------------------------------------------------------------
-static void stat_bar(int x, int y, const char* label, int value /*0..100*/, uint16_t c) {
+// Largeur de la colonne des libelles : calculee (cinq langues, « Puissance » ou « Geschwindigkeit » ne doivent
+// pas passer sous la jauge).
+static int stat_label_width() {
+    const i18n::StrId ids[5] = { i18n::STR_ST_VITALITY, i18n::STR_ST_SPEED, i18n::STR_ST_POWER, i18n::STR_ST_DEFENSE, i18n::STR_ST_REACH };
+    int w = 0;
+    for (const i18n::StrId id : ids) { const int t = graphics_text_width(i18n::T(id)); if (t > w) w = t; }
+    return w + 6;
+}
+
+static void stat_bar(int x, int y, int lw, const char* label, int value /*0..100*/, uint16_t c) {
+    const int bw = (SCR_W - 6 - (x + lw)) < 64 ? (SCR_W - 6 - (x + lw)) : 64;
     graphics_draw_text_raw(x, y, label, ui::C_DIM);
-    graphics_fill_rect_raw(x + 62, y + 1, 62, 6, graphics_make_color(30, 30, 44));
-    graphics_fill_rect_raw(x + 62, y + 1, value * 62 / 100, 6, c);
+    graphics_fill_rect_raw(x + lw, y + 1, bw, 6, graphics_make_color(30, 30, 44));
+    graphics_fill_rect_raw(x + lw, y + 1, value * bw / 100, 6, c);
 }
 
 void draw_fighter_card(FighterId id, int x, int y) {
     const FighterDef& d = def(id);
     const uint16_t c = col(d.accent);
-    stat_bar(x, y,      i18n::T(i18n::STR_ST_VITALITY), d.max_hp * 100 / 1250, c);
-    stat_bar(x, y + 11, i18n::T(i18n::STR_ST_SPEED),    (int)(d.walk_fwd * 100.0f / 3.2f), c);
-    stat_bar(x, y + 22, i18n::T(i18n::STR_ST_POWER),    d.power, c);
-    stat_bar(x, y + 33, i18n::T(i18n::STR_ST_DEFENSE),  d.defense, c);
-    stat_bar(x, y + 44, i18n::T(i18n::STR_ST_REACH),    d.reach, c);
+    const int lw = stat_label_width();
+    stat_bar(x, y,      lw, i18n::T(i18n::STR_ST_VITALITY), d.max_hp * 100 / 1250, c);
+    stat_bar(x, y + 11, lw, i18n::T(i18n::STR_ST_SPEED),    (int)(d.walk_fwd * 100.0f / 3.2f), c);
+    stat_bar(x, y + 22, lw, i18n::T(i18n::STR_ST_POWER),    d.power, c);
+    stat_bar(x, y + 33, lw, i18n::T(i18n::STR_ST_DEFENSE),  d.defense, c);
+    stat_bar(x, y + 44, lw, i18n::T(i18n::STR_ST_REACH),    d.reach, c);
 }
 
 void draw_select(FighterId sel, uint32_t now_ms, const char* title) {
@@ -1093,10 +1104,10 @@ void draw_select(FighterId sel, uint32_t now_ms, const char* title) {
     graphics_draw_text_raw(152, 42, i18n::title_of(sel), ui::C_DIM);
     draw_fighter_card(sel, 152, 62);
 
-    graphics_draw_text_raw(152, 114, i18n::T(i18n::STR_SPECIALS), ui::C_ACCENT);
+    graphics_draw_text_raw(152, 120, i18n::T(i18n::STR_SPECIALS), ui::C_ACCENT);
     for (int i = 0; i < 3; ++i)
-        graphics_draw_text_raw(152, 126 + i * 10, d.specials[i].name, ui::C_TEXT);
-    graphics_draw_text_raw(152, 158, d.finisher.name, ui::C_DIM);
+        graphics_draw_text_raw(152, 132 + i * 10, d.specials[i].name, ui::C_TEXT);
+    graphics_draw_text_raw(148, 164, d.finisher.name, ui::C_DIM);
 
     // Bandeau des six, le choisi encadré (clignote doucement).
     const int sz = 36, gap = 8;

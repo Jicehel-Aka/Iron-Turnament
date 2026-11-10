@@ -207,6 +207,20 @@ Tekken, Killer Instinct) ont comparé Iron Tournament à ces références **de m
 
 Retours à traiter ensuite : mode entraînement (le plus demandé), désamorçage de projection, rollback pour jouer à distance.
 
+
+## Univers, critique et premier contact (4e sprint)
+- **Romancier** : le prototype web avait tout un univers (citations d'entrée, répliques de victoire, fins) qui n'avait jamais été porté
+  sur AKA. Il l'est maintenant, **texte du prototype conservé** (`tools/lore.py`, normalisé pour la police 8×8) : l'adversaire dit sa citation
+  sur l'écran Versus, le vainqueur lance une réplique sur l'écran de fin, et gagner le tournoi affiche **la fin du personnage** (défilante).
+  FR et EN complets ; citations traduites en DE/ES/IT ; **les paragraphes des fins restent en anglais en DE/ES/IT (à traduire)**.
+  Un test (`test/lore_test.cpp`, 1258 vérifications) garantit que tout tient en 38 colonnes sans rien tronquer, dans les 5 langues.
+- **Critique (jeux vidéo)** : fiche des combattants avec le libellé « Puissance » écrasé par la jauge et le nom du SUPER collé au bord
+  de l'écran ; « Coups spéciaux » collé aux jauges → colonne des libellés calculée, jauges adaptées, espacements corrigés.
+  Autres reproches retenus, **non traités** : 6 combattants seulement, pas de mode entraînement, réseau sans retour arrière, son jamais écouté.
+- **Journaliste web** : le `README` de la racine faisait six lignes, sans capture, sans lien de téléchargement ni commandes PC. Réécrit
+  (captures réelles issues de `--autotest`, « Jouer en 30 secondes »). Parcours mesuré : titre → tournoi → combattant → Versus → combat,
+  quatre appuis sur A.
+
 Non vérifié : le rendu sonore à l'oreille (synthèse écrite sans écoute) et le ressenti humain de l'aide aux débutants.
 
 ## Cohérence physique des animations

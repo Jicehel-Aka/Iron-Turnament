@@ -275,6 +275,20 @@ KEYS = {
 }
 
 
+# --- univers (citations, fins) : repris du prototype web, voir tools/lore.py -----------------------------
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from lore import LORE
+for _r in LORE:
+    _n = _r['id'].replace('-', '')
+    S.append((f'LORE_{_n}_INTRO', *_r['intro']))
+    for _k in range(3):
+        S.append((f'LORE_{_n}_WIN{_k + 1}', *_r['win'][_k]))
+    S.append((f'LORE_{_n}_TITLE', *_r['title']))
+    for _k in range(3):
+        _fr, _en = _r['end'][_k]
+        S.append((f'LORE_{_n}_END{_k + 1}', _fr, _en, _en, _en, _en))
+
+
 def esc(t):
     return t.replace('\\', '\\\\').replace('"', '\\"')
 
@@ -302,7 +316,10 @@ def main(out):
         f.write("void  set_lang(Lang l);\nLang  lang();\n"
                 "const char* T(StrId id);\n"
                 "const char* lang_name(Lang l);\n"
-                "const char* title_of(uint8_t fighter);   // titre du combattant (FighterId)\n\n"
+                "const char* title_of(uint8_t fighter);   // titre du combattant (FighterId)\n"
+                "// Univers : 0 citation d'entree, 1..3 citations de victoire, 4 titre de la fin, 5..7 paragraphes de la fin.\n"
+                "constexpr uint8_t LORE_PER_FIGHTER = 8;\n"
+                "const char* lore(uint8_t fighter, uint8_t k);\n\n"
                 "// Regles d'un jeu : `n` lignes, recuperees une par une.\n"
                 "int         rules_lines(GameId g);\n"
                 "const char* rules_line(GameId g, int i);\n\n"
@@ -367,6 +384,7 @@ const char* T(StrId id)        { return (id < STR_COUNT) ? TABLE[g_lang][id] : "
 const char* lang_name(Lang l)  { return (l < LANG_COUNT) ? NAMES[l] : "?"; }
 
 const char* title_of(uint8_t f) { return (f < 6) ? TABLE[g_lang][STR_FT_KENJI + f] : ""; }
+const char* lore(uint8_t f, uint8_t k) { return (f < 6 && k < LORE_PER_FIGHTER) ? TABLE[g_lang][STR_LORE_KENJI_INTRO + f * LORE_PER_FIGHTER + k] : ""; }
 
 int rules_lines(GameId g) {
     switch (g) {

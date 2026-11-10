@@ -20,6 +20,7 @@
 #include "game_module.h"
 #include "ui.h"
 #include "i18n.h"
+#include "textwrap.h"
 #include "save.h"
 #include "../core/graphics.h"
 #include "../core/input.h"
@@ -39,7 +40,7 @@ using namespace core;
 
 enum class State : uint8_t {
     Title, Menu, Options, SelectP1, SelectP2, Versus, Playing, InGameMenu,
-    Rules, Controls, Moves, GameOver, ConfirmQuit, ConfirmAbandon,
+    Rules, Controls, Moves, Ending, GameOver, ConfirmQuit, ConfirmAbandon,
     NetMenu, NetSelect, NetWait, NetError
 };
 
@@ -291,6 +292,28 @@ static void update_select(bool foe) {
 // -----------------------------------------------------------------------------
 // Ecran « Versus » entre deux combats
 // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// Texte de l'univers : citations d'entree / de victoire, fin du tournoi
+// -----------------------------------------------------------------------------
+static char s_end_buf[48][44];
+static int  s_end_n = 0;
+static const char* end_ln(int i) { return i < s_end_n ? s_end_buf[i] : ""; }
+static void build_ending() {
+    s_end_n = 0;
+    for (int k = 5; k <= 7; ++k) {
+        s_end_n = textwrap::wrap<44>(i18n::lore(s_player, (uint8_t)k), 38, s_end_buf, s_end_n, 47);
+        if (k < 7 && s_end_n < 47) s_end_buf[s_end_n++][0] = 0;       // ligne vide entre les paragraphes
+    }
+}
+static int s_quote_n = 0;      // tourne entre les trois citations de victoire
+
+// Affiche un texte centre, au plus 3 lignes, a partir de y.
+static void draw_quote(const char* text, int y, uint16_t color) {
+    char b[3][44];
+    const int n = textwrap::wrap<44>(text, 38, b, 0, 3);
+    for (int i = 0; i < n; ++i) graphics_draw_text_center_raw(y + i * 10, b[i], color);
+}
+
 static void update_versus() {
     if (input_was_pressed(Button::A)) { sfx_menu_ok(); start_bout(); }
     if (input_was_pressed(Button::B)) { sfx_menu_back(); go_menu(); }
@@ -323,7 +346,8 @@ static void draw_versus() {
     graphics_draw_text_raw(250 - graphics_text_width(tb) / 2, 172, tb, ui::C_DIM);
 
     if (s_mode == Mode::Tournament && s_bout == 4)
-        graphics_draw_text_center_raw(196, i18n::T(i18n::STR_FINAL_DUEL), ui::C_TARGET);
+        graphics_draw_text_center_raw(34, i18n::T(i18n::STR_FINAL_DUEL), ui::C_TARGET);
+    draw_quote(i18n::lore(s_foe, 0), 188, ui::C_TEXT);              // l'adversaire parle
 
     ui::bottom_bar(nullptr, true);
 }
@@ -480,6 +504,11 @@ static void update_playing() {
     }
     audio_play_tune(o == OUT_WIN ? Tune::Victory : Tune::Defeat);
     s_sel = 0;
+    if (o == OUT_WIN && !s_net && s_mode == Mode::Tournament) {        // titre de champion : la fin du personnage
+        build_ending(); s_scroll = 0; s_text_back = State::GameOver; s_state = State::Ending;
+        return;
+    }
+    s_quote_n++;
     s_state = State::GameOver;
 }
 
@@ -524,6 +553,7 @@ void update(uint32_t now) {
         case State::Rules:    update_text(i18n::rules_lines(i18n::GAME_FIGHT)); break;
         case State::Controls: update_text(controls_total()); break;
         case State::Moves:    update_text(s_moves_n); break;
+        case State::Ending:   update_text(s_end_n); break;
         case State::NetMenu:   update_net_menu(); break;
         case State::NetSelect: update_net_select(); break;
         case State::NetWait:   update_net_wait(); break;
@@ -594,6 +624,9 @@ void draw() {
             return;
         case State::Controls:
             ui::text_page(i18n::T(i18n::STR_CONTROLS), controls_ln, controls_total(), s_scroll, 18);
+            return;
+        case State::Ending:
+            ui::text_page(i18n::lore(s_player, 4), end_ln, s_end_n, s_scroll, 18);
             return;
         case State::Moves:
             ui::text_page(i18n::T(i18n::STR_MOVES), moves_ln, s_moves_n, s_scroll, 18);
@@ -671,6 +704,10 @@ void draw() {
             } else {
                 const ui::Menu m { t, { i18n::T(i18n::STR_BACK) }, 1 };
                 ui::draw_menu(m, 0);
+            }
+            if (!s_net) {                                              // une repartie du vainqueur
+                const uint8_t who = o == OUT_WIN ? s_player : s_foe;
+                draw_quote(i18n::lore(who, (uint8_t)(1 + s_quote_n % 3)), 168, ui::C_DIM);
             }
             break;
         }
