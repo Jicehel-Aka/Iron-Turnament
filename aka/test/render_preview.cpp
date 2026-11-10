@@ -42,6 +42,7 @@ void graphics_draw_bitmap565_scaled(int x,int y,int dw,int dh,const uint16_t* d,
 // sons : neant
 namespace core {
 void sfx_cursor(){} void sfx_select(){} void sfx_cancel(){} void sfx_move(){} void sfx_capture(){} void sfx_multi_capture(){}
+void sfx_hit_light(){} void sfx_hit_heavy(){} void sfx_block(){} void sfx_whoosh(){} void sfx_special(){} void sfx_parry(){} void sfx_jump(){}
 void sfx_promote(){} void sfx_gameover(){} void sfx_draw(){} void sfx_illegal(){} void sfx_menu_ok(){} void sfx_menu_back(){}
 }
 using namespace fight; using namespace core;
@@ -97,6 +98,9 @@ int main(int argc,char**argv){
     { Match m; init_match(m,KENJI,KROWEN,false,3); m.phase=PH_FIGHT; m.banner=BN_PARRY; m.banner_arg=KROWEN; m.banner_timer=100;
       m.f[1].action=A_BLOCK_HIGH; m.f[1].action_total=7; m.f[0].action=A_HITSTUN; m.f[0].action_total=30; m.f[0].action_frame=3;
       graphics_fill_rect_raw(0,0,320,240,0); draw_match(m,0); snprintf(path,sizeof path,"%s/parry.ppm",dir); dump(path); }
+    { Match m; init_match(m,KENJI,KROWEN,false,3); m.phase=PH_FIGHT; m.banner=BN_NONE; m.f[1].action=A_HITSTUN; m.f[1].action_total=20; m.f[1].action_frame=4;
+      m.f[1].combo_count=5; m.f[1].combo_timer=30; m.f[0].combo_count=2; m.f[0].combo_timer=30;
+      graphics_fill_rect_raw(0,0,320,240,0); draw_match(m,0); snprintf(path,sizeof path,"%s/combo.ppm",dir); dump(path); }
     { Match m; init_match(m,KENJI,KROWEN,false,3); m.phase=PH_FIGHT; m.banner=BN_FINISH_HIM; m.banner_arg=KENJI; m.banner_timer=100; m.f[1].action=A_DIZZY;
       graphics_fill_rect_raw(0,0,320,240,0); draw_match(m,0); snprintf(path,sizeof path,"%s/ban.ppm",dir); dump(path); }
     return 0;

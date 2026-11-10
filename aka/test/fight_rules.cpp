@@ -588,6 +588,118 @@ static void test_ki() {
     CHECK(m.f[1].ki == 33);
 }
 
+
+// -----------------------------------------------------------------------------
+// Niveaux sur TOUT le match, aide aux debutants, zone de clemence
+// -----------------------------------------------------------------------------
+static void test_level_and_assist() {
+    std::printf("[niveaux, aide aux debutants, clemence]\n");
+    // Les coefficients de niveau survivent au changement de manche (bug trouve en recette : ils etaient perdus des la manche 2).
+    for (int d = 0; d < 3; ++d) {
+        Match m; init_match(m, KENJI, TITAN, false, 9);
+        set_ai_level(m, (Difficulty)d);
+        const float a = m.f[1].dmg_scale, h = m.f[0].dmg_scale;
+        m.winner_slot = 1; start_next_round(m);                 // le joueur gagne la manche 1
+        CHECK(m.f[1].dmg_scale == a && m.f[0].dmg_scale == h);
+        m.winner_slot = 1; start_next_round(m);
+        CHECK(m.f[1].dmg_scale == a && m.f[0].dmg_scale == h);
+    }
+    // Hors set_ai_level (IA contre IA, reseau) : les coefficients posees a la main sont conserves aussi.
+    { Match m; init_match(m, KENJI, TITAN, false, 9);
+      m.f[0].dmg_scale = 1.234f; m.f[1].dmg_scale = 0.777f;
+      m.winner_slot = 2; start_next_round(m);
+      CHECK(m.f[0].dmg_scale == 1.234f && m.f[1].dmg_scale == 0.777f && m.assist == 0); }
+    // Novice : chaque manche perdue adoucit la suivante, chaque manche gagnee reprend une partie de l'aide, plafonnee.
+    { Match m; init_match(m, KENJI, TITAN, false, 9, MatchRules{3, 99});
+      set_ai_level(m, DIFF_NOVICE);
+      const float ai0 = m.f[1].dmg_scale, hu0 = m.f[0].dmg_scale;
+      m.winner_slot = 2; start_next_round(m);
+      CHECK(m.assist == 1 && m.f[1].dmg_scale < ai0 && m.f[0].dmg_scale > hu0);
+      m.winner_slot = 2; start_next_round(m); m.winner_slot = 2; start_next_round(m); m.winner_slot = 2; start_next_round(m);
+      CHECK(m.assist == ASSIST_MAX);
+      CHECK(std::fabs(m.f[1].dmg_scale - ai0 * ASSIST_AI * ASSIST_AI * ASSIST_AI) < 1e-5f);
+      m.winner_slot = 1; start_next_round(m);
+      CHECK(m.assist == ASSIST_MAX - 1); }
+    // Arcade : aide legere (2 paliers, plus faible qu'en Novice) ; Maitre : jamais d'aide, meme apres des defaites.
+    { Match m; init_match(m, KENJI, TITAN, false, 9, MatchRules{3, 99});
+      set_ai_level(m, DIFF_ARCADE);
+      const float ai0 = m.f[1].dmg_scale;
+      for (int i = 0; i < 4; ++i) { m.winner_slot = 2; start_next_round(m); }
+      CHECK(m.assist == ASSIST_MAX_ARCADE);
+      CHECK(std::fabs(m.f[1].dmg_scale - ai0 * ASSIST_AI_ARCADE * ASSIST_AI_ARCADE) < 1e-5f);
+      CHECK(ASSIST_AI_ARCADE > ASSIST_AI && ASSIST_HUMAN_ARCADE < ASSIST_HUMAN); }
+    { Match m; init_match(m, KENJI, TITAN, false, 9);
+      set_ai_level(m, DIFF_MASTER, 3);
+      CHECK(m.assist == 0);
+      m.winner_slot = 2; start_next_round(m);
+      CHECK(m.assist == 0); }
+    // Aide de depart (nouvel essai apres une defaite) : plafonnee et seulement en Novice.
+    { Match m; init_match(m, KENJI, TITAN, false, 9);
+      set_ai_level(m, DIFF_NOVICE, 2); CHECK(m.assist == 2);
+      set_ai_level(m, DIFF_NOVICE, 9); CHECK(m.assist == ASSIST_MAX); }
+    // Zone de clemence : le meme coup de l'IA fait moins mal a un joueur sous 25 % de vie (Novice uniquement).
+    auto hit_dmg = [](Difficulty d, int hp) {
+        Match m; init_match(m, KENJI, TITAN, false, 11);
+        set_ai_level(m, d);
+        m.f[1].dmg_scale = 1.0f;                                // isole l'effet de la clemence
+        m.phase = PH_FIGHT; m.phase_timer = 0;
+        m.f[0].x = 200; m.f[1].x = 226; m.f[0].facing = 1; m.f[1].facing = -1;
+        m.f[0].max_hp = 400; m.f[0].hp = (int16_t)hp;
+        Input none, hit; hit.a = hit.jp_a = true;
+        const int before = m.f[0].hp;
+        for (int i = 0; i < 60 && m.f[0].hp == before; ++i) step_match_2p(m, none, i == 0 ? hit : none);
+        return before - m.f[0].hp;
+    };
+    { const int full = hit_dmg(DIFF_NOVICE, 400), low = hit_dmg(DIFF_NOVICE, 90), master_low = hit_dmg(DIFF_MASTER, 90);
+      CHECK(full > 0 && low > 0 && master_low > 0);
+      CHECK(low < full);                                         // clemence
+      CHECK(master_low > low); }
+}
+
+// Enchainement leger -> lourd
+static void test_chain() {
+    std::printf("[enchainement leger -> lourd]\n");
+    auto run = [](bool chain, int* combo_max, int* dmg) {
+        Match m; setup(m, KENJI, TITAN, 200);
+        m.f[1].x = m.f[0].x + 30;
+        Input none, a, b; a.a = a.jp_a = true; b.b = b.jp_b = true;
+        const int hp0 = m.f[1].hp;
+        st(m, a);
+        int pressed = 0; *combo_max = 0;
+        for (int i = 0; i < 80; ++i) {
+            const bool go = chain && !pressed && m.f[0].action == A_LIGHT && m.f[0].hit_confirmed;
+            if (go) { st(m, b); pressed = 1; } else st(m, none);
+            if (m.f[1].combo_count > *combo_max) *combo_max = m.f[1].combo_count;
+        }
+        *dmg = hp0 - m.f[1].hp;
+        return pressed;
+    };
+    int c1, d1, c2, d2;
+    const int p1 = run(false, &c1, &d1), p2 = run(true, &c2, &d2);
+    CHECK(p1 == 0 && p2 == 1);
+    CHECK(c1 == 1);                 // le jab seul : un coup
+    CHECK(c2 >= 2);                 // jab + lourd : un vrai enchainement (la cible n'est pas libre entre les deux)
+    CHECK(d2 > d1);
+    // Une pression faite PENDANT le gel d'impact n'est pas perdue : le lourd part quand meme.
+    { Match m; setup(m, KENJI, TITAN, 200); m.f[1].x = m.f[0].x + 30;
+      Input none, a, b; a.a = a.jp_a = true; b.b = b.jp_b = true;
+      step_match_2p(m, a, none);
+      for (int i = 0; i < 20 && !(m.f[0].hit_confirmed && m.hitstop > 1); ++i) step_match_2p(m, none, none);
+      CHECK(m.hitstop > 1);
+      step_match_2p(m, b, none);                       // appui unique, en plein gel
+      bool heavy = false;
+      for (int i = 0; i < 30; ++i) { step_match_2p(m, none, none); if (m.f[0].action == A_HEAVY) heavy = true; }
+      CHECK(heavy); }
+    // Jamais de lourd -> lourd, ni de chaine depuis un lourd.
+    { Match m; setup(m, KENJI, TITAN, 200); m.f[1].x = m.f[0].x + 30;
+      Input none, b; b.b = b.jp_b = true;
+      st(m, b);
+      for (int i = 0; i < 40 && !(m.f[0].action == A_HEAVY && m.f[0].hit_confirmed); ++i) st(m, none);
+      bool restarted = false; int last = m.f[0].action_frame;
+      for (int i = 0; i < 12; ++i) { st(m, b); if (m.f[0].action == A_HEAVY && m.f[0].action_frame < last) restarted = true; last = m.f[0].action_frame; }
+      CHECK(!restarted); }
+}
+
 int main() {
     test_ladder();
     test_shortcut_and_motions();
@@ -598,6 +710,8 @@ int main() {
     test_input_buffer();
     test_ground_rules();
     test_parry_riposte();
+    test_level_and_assist();
+    test_chain();
     test_round_flow();
     test_boss_boost();
     test_determinism();

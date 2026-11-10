@@ -96,15 +96,38 @@ void init_match(Match& m, FighterId p1, FighterId p2, bool boss_match, uint32_t 
     create_fighter(m.f[1], p2, 2, boss_match);
 }
 
-void set_ai_level(Match& m, Difficulty diff) {
-    m.f[1].dmg_scale = g_dmg_scale[diff][m.f[1].id] * g_level_ai_mult[diff];
-    m.f[0].dmg_scale = g_dmg_scale[DIFF_MASTER][m.f[0].id] * g_level_human_mult[diff];
+static int assist_cap(int level) { return level == DIFF_NOVICE ? ASSIST_MAX : level == DIFF_ARCADE ? ASSIST_MAX_ARCADE : 0; }
+
+static void apply_level_scales(Match& m) {
+    const int L = m.ai_level;
+    float ai = g_dmg_scale[L][m.f[1].id] * g_level_ai_mult[L];
+    float hu = g_dmg_scale[DIFF_MASTER][m.f[0].id] * g_level_human_mult[L];
+    const bool arcade = L == DIFF_ARCADE;
+    for (int i = 0; i < m.assist; ++i) {
+        ai *= arcade ? ASSIST_AI_ARCADE : ASSIST_AI;
+        hu *= arcade ? ASSIST_HUMAN_ARCADE : ASSIST_HUMAN;
+    }
+    m.f[1].dmg_scale = ai;
+    m.f[0].dmg_scale = hu;
+}
+
+void set_ai_level(Match& m, Difficulty diff, int assist) {
+    m.leveled = true;
+    m.ai_level = (uint8_t)diff;
+    m.assist = (uint8_t)imax(0, imin(assist_cap(diff), assist));
+    apply_level_scales(m);
 }
 
 void start_next_round(Match& m) {
     const uint8_t k1 = m.f[0].ki, k2 = m.f[1].ki;
     const bool boss = m.f[1].boss;
     const FighterId i1 = m.f[0].id, i2 = m.f[1].id;
+    const float sc1 = m.f[0].dmg_scale, sc2 = m.f[1].dmg_scale;   // les coefficients du niveau valent pour TOUT le match
+
+    if (m.leveled) {
+        if (m.winner_slot == 2 && m.assist < assist_cap(m.ai_level)) m.assist++;
+        else if (m.winner_slot == 1 && m.assist > 0) m.assist--;
+    }
 
     m.round++;
     m.timer_frames = m.round_sec == 0 ? UNLIMITED_FRAMES : m.round_sec * 60;
@@ -120,6 +143,8 @@ void start_next_round(Match& m) {
 
     create_fighter(m.f[0], i1, 1, false);  m.f[0].ki = k1;
     create_fighter(m.f[1], i2, 2, boss);   m.f[1].ki = k2;
+    m.f[0].dmg_scale = sc1; m.f[1].dmg_scale = sc2;
+    if (m.leveled) apply_level_scales(m);
 }
 
 // -----------------------------------------------------------------------------
@@ -347,7 +372,10 @@ static void apply_damage(Match& m, Fighter& atk, Fighter& dfn, int raw, bool kno
 
     const bool riposte_hit = atk.riposte > 0 && atk.power < 2 && !unblockable;
     const float riposte_scale = riposte_hit ? RIPOSTE_BONUS : 1.0f;
-    const int dmg = imax(8, (int)std::lround(raw * power_scale * boss_scale * def_mitig * combo_scale * riposte_scale * atk.dmg_scale));
+    // Zone de clemence (Novice) : un joueur presque a terre prend des coups de l'IA plus legers : on perd en
+    // se battant jusqu'au bout, pas en se faisant achever en deux touches.
+    const float mercy = (m.leveled && m.ai_level == DIFF_NOVICE && atk.slot == 2 && dfn.hp * 4 < dfn.max_hp) ? MERCY_SCALE : 1.0f;
+    const int dmg = imax(8, (int)std::lround(raw * power_scale * boss_scale * def_mitig * combo_scale * riposte_scale * atk.dmg_scale * mercy));
 
     const bool was_attacking =
         dfn.action == A_LIGHT || dfn.action == A_HEAVY || dfn.action == A_LOW_KICK ||
@@ -411,7 +439,7 @@ static void do_parry(Match& m, Fighter& atk, Fighter& dfn, const Input* dfn_in) 
     atk.rep_count = 0; atk.rep_kind = 0; atk.spam = false;
     m.hitstop = 6;
     banner(m, BN_PARRY, dfn.id, 40);
-    sfx(m, SFX_BLOCK);
+    sfx(m, SFX_PARRY);
     spawn_particles(m, dfn.x + dfn.facing * 12, 172 + dfn.y, Rgb{250, 204, 21}, 12, 3.0f, 3);
 }
 
@@ -770,7 +798,10 @@ static void update_fighter(Match& m, Fighter& f, Fighter& opp, const Input& in) 
     if (in.jp_b)       f.buf_b  = INPUT_BUFFER; else if (f.buf_b)  --f.buf_b;
     if (in.jp_special) f.buf_sp = INPUT_BUFFER; else if (f.buf_sp) --f.buf_sp;
     Input e = in;                                    // entrees effectives (tampon compris)
-    if (can_act(f) && f.y >= 0) {
+    const bool special_cancel =
+        (f.action == A_LIGHT || f.action == A_HEAVY || f.action == A_UPPERCUT) &&
+        f.hit_confirmed && f.y >= 0;
+    if ((can_act(f) && f.y >= 0) || special_cancel) {
         if (f.buf_a)  e.jp_a = true;
         if (f.buf_b)  e.jp_b = true;
         if (f.buf_sp) e.jp_special = true;
@@ -783,9 +814,6 @@ static void update_fighter(Match& m, Fighter& f, Fighter& opp, const Input& in) 
 
     // Annulation d'un normal qui a touché par un spécial (« 2-in-1 cancel »), et « Ki Cancel » :
     // un EX peut annuler la fin d'un spécial qui a touché ou ete garde (50 Ki).
-    const bool special_cancel =
-        (f.action == A_LIGHT || f.action == A_HEAVY || f.action == A_UPPERCUT) &&
-        f.hit_confirmed && f.y >= 0;
     const bool ki_cancel =
         is_special(f.action) && f.power < 2 && f.hit_confirmed && f.y >= 0 && ex_req &&
         f.action_frame > def(f.id).specials[f.action - A_SPECIAL_1].startup +
@@ -805,6 +833,16 @@ static void update_fighter(Match& m, Fighter& f, Fighter& opp, const Input& in) 
             apply_physics(f);
             return;
         }
+    }
+
+    // Enchainement (« chain ») : un coup leger au sol qui a touche ou ete garde peut etre suivi d'un coup lourd (B)
+    // avant la fin de sa retombee. Un seul maillon : le lourd ne s'enchaine sur rien.
+    if (f.action == A_LIGHT && f.hit_confirmed && f.y >= 0 && (in.jp_b || f.buf_b) && !in.down && m.phase == PH_FIGHT) {
+        clear_buffer();
+        f.vx = 0; sfx(m, SFX_WHIFF);
+        start_action(f, A_HEAVY, imax(20, 24 - (int)std::lround((def(f.id).recovery - 55) * 0.08f)));
+        apply_physics(f);
+        return;
     }
 
     // États verrouillés.
@@ -1106,7 +1144,19 @@ static void step_impl(Match& m, const Input& p1_in, const Input* p2_given, Diffi
     }
 
     // Hitstop : gel d'impact.
-    if (m.hitstop > 0) { m.hitstop--; return; }
+    // Les pressions faites pendant le gel sont memorisees (sinon, au moment meme de l'impact, quand on enchaine ou
+    // qu'on annule, la touche serait perdue).
+    if (m.hitstop > 0) {
+        m.hitstop--;
+        auto buffer = [](Fighter& f, const Input& in) {
+            if (in.jp_a) f.buf_a = INPUT_BUFFER;
+            if (in.jp_b) f.buf_b = INPUT_BUFFER;
+            if (in.jp_special) f.buf_sp = INPUT_BUFFER;
+        };
+        buffer(m.f[0], p1_in);
+        if (p2_given) buffer(m.f[1], *p2_given);
+        return;
+    }
 
     Fighter& P1 = m.f[0];
     Fighter& P2 = m.f[1];

@@ -17,3 +17,5 @@ g++ -std=c++17 -O2 -Wall -Wextra -Werror -ffp-contract=off -I main/games/fight -
     main/games/fight/fight_data.cpp main/games/fight/fight_engine.cpp main/games/fight/fight_ai.cpp \
     main/games/fight/netplay.cpp main/net/net_udp.cpp -o /tmp/net_udp_test -pthread
 /tmp/net_udp_test
+g++ -std=c++17 -O2 -Wall -Wextra -Werror -I main/shell test/lore_test.cpp main/shell/i18n.cpp -o /tmp/lore_test
+/tmp/lore_test

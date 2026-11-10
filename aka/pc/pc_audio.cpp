@@ -36,6 +36,13 @@ void sfx_promote()       { play_sfx(440, 880, 220, 0.25f, 0); play_sfx(660, 1320
 void sfx_gameover()      { play_sfx(440, 110, 500, 0.30f, 1); }
 void sfx_draw()          { play_sfx(330, 330, 200, 0.20f, 1); }
 void sfx_illegal()       { play_sfx(110, 90, 90, 0.30f, 1); }
+void sfx_hit_light()     { play_sfx(420, 160, 55, 0.50f, 2); }
+void sfx_hit_heavy()     { play_sfx(240, 60, 160, 0.65f, 2); }
+void sfx_block()         { play_sfx(1100, 800, 50, 0.28f, 0); }
+void sfx_whoosh()        { play_sfx(900, 300, 75, 0.12f, 2); }
+void sfx_special()       { play_sfx(300, 900, 170, 0.30f, 1); }
+void sfx_parry()         { play_sfx(1320, 1980, 130, 0.32f, 0); }
+void sfx_jump()          { play_sfx(300, 520, 45, 0.15f, 1); }
 void sfx_menu_ok()       { play_sfx(520, 780, 70, 0.22f, 0); }
 void sfx_menu_back()     { play_sfx(520, 340, 70, 0.20f, 0); }
 
@@ -49,12 +56,18 @@ static const int8_t WIN_M[]   = { 24,28,31,36, 0,31,36,0 };
 static const int8_t WIN_B[]   = { 0,0,7,0, 0,0,12,0 };
 static const int8_t LOSE_M[]  = { 31,0,29,0, 27,0,24,0, 0,0,0,0 };
 static const int8_t LOSE_B[]  = { 7,0,0,0, 3,0,0,0, 0,0,0,0 };
-static const Song SONGS[5] = {
+// Combat : Am - F - C - G, basse pulsee. Duel final : plus rapide, re mineur.
+static const int8_t FIGHT_M[] = { 24,0,27,0, 31,0,29,27,  27,0,24,0, 20,0,24,27,  31,0,0,34, 31,0,29,27,  29,0,26,0, 22,0,26,29 };
+static const int8_t FIGHT_B[] = { 12,0,12,0, 12,0,19,0,  8,0,8,0, 8,0,15,0,  15,0,15,0, 15,0,22,0,  10,0,10,0, 10,0,17,0 };
+static const int8_t BOSS_M[]  = { 29,0,32,0, 36,0,32,29,  32,0,29,0, 25,0,29,32,  34,0,0,31, 34,0,31,27,  28,0,31,0, 36,0,0,0 };
+static const int8_t BOSS_B[]  = { 5,0,5,5, 5,0,12,0,  1,0,1,1, 1,0,8,0,  3,0,3,3, 3,0,10,0,  0,0,0,0, 0,0,7,0 };
+static const Song SONGS[6] = {
     { nullptr, nullptr, 0, 1, false },
     { TITLE_M, TITLE_B, 16, 260, true },
-    { GAME_M,  GAME_B,  32, 150, true },
+    { FIGHT_M, FIGHT_B, 32, 135, true },
     { WIN_M,   WIN_B,   8,  170, false },
     { LOSE_M,  LOSE_B,  12, 260, false },
+    { BOSS_M,  BOSS_B,  32, 112, true },
 };
 static Tune s_tune = Tune::None;
 static int  s_step = 0; static int s_step_samples = 0;

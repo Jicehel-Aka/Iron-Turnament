@@ -115,9 +115,9 @@ float g_level_human_mult[3] = { 1.10f, 1.0f, 1.0f };   // Novice : le joueur cog
 
 float g_dmg_scale[3][FIGHTER_COUNT] = {
     // Kenji, Krowen, Mei-Lin, Titan, Nyxia, Malakor
-    { 0.860f, 0.600f, 0.974f, 1.280f, 1.036f, 1.217f },   // Novice
-    { 0.934f, 0.793f, 0.821f, 1.055f, 1.241f, 1.351f },   // Arcade
-    { 0.883f, 1.039f, 1.067f, 0.782f, 0.863f, 1.271f },   // Maitre (reference, aussi pour le joueur)
+    { 0.843f, 0.788f, 0.952f, 0.911f, 0.902f, 1.281f },   // Novice
+    { 0.890f, 0.970f, 0.922f, 0.867f, 1.010f, 1.356f },   // Arcade
+    { 0.841f, 0.979f, 1.047f, 0.778f, 0.832f, 1.198f },   // Maitre (reference, aussi pour le joueur)
 };
 
 void build_ladder(FighterId player, FighterId out[5]) {

@@ -38,6 +38,7 @@ enum StrId : uint16_t {
     STR_NET_ERR_LEFT,
     STR_NET_ERR_LINK,
     STR_RULES,
+    STR_MOVES,
     STR_CONTROLS,
     STR_OPTIONS,
     STR_QUIT,
@@ -84,6 +85,8 @@ enum StrId : uint16_t {
     STR_FIGHT,
     STR_COUNTER,
     STR_PARRY,
+    STR_REMATCH,
+    STR_RETRY,
     STR_RIPOSTE,
     STR_THROW,
     STR_GUARD_BREAK,
@@ -108,6 +111,54 @@ enum StrId : uint16_t {
     STR_FT_TITAN,
     STR_FT_NYXIA,
     STR_FT_MALAKOR,
+    STR_LORE_KENJI_INTRO,
+    STR_LORE_KENJI_WIN1,
+    STR_LORE_KENJI_WIN2,
+    STR_LORE_KENJI_WIN3,
+    STR_LORE_KENJI_TITLE,
+    STR_LORE_KENJI_END1,
+    STR_LORE_KENJI_END2,
+    STR_LORE_KENJI_END3,
+    STR_LORE_KROWEN_INTRO,
+    STR_LORE_KROWEN_WIN1,
+    STR_LORE_KROWEN_WIN2,
+    STR_LORE_KROWEN_WIN3,
+    STR_LORE_KROWEN_TITLE,
+    STR_LORE_KROWEN_END1,
+    STR_LORE_KROWEN_END2,
+    STR_LORE_KROWEN_END3,
+    STR_LORE_MEILIN_INTRO,
+    STR_LORE_MEILIN_WIN1,
+    STR_LORE_MEILIN_WIN2,
+    STR_LORE_MEILIN_WIN3,
+    STR_LORE_MEILIN_TITLE,
+    STR_LORE_MEILIN_END1,
+    STR_LORE_MEILIN_END2,
+    STR_LORE_MEILIN_END3,
+    STR_LORE_TITAN_INTRO,
+    STR_LORE_TITAN_WIN1,
+    STR_LORE_TITAN_WIN2,
+    STR_LORE_TITAN_WIN3,
+    STR_LORE_TITAN_TITLE,
+    STR_LORE_TITAN_END1,
+    STR_LORE_TITAN_END2,
+    STR_LORE_TITAN_END3,
+    STR_LORE_NYXIA_INTRO,
+    STR_LORE_NYXIA_WIN1,
+    STR_LORE_NYXIA_WIN2,
+    STR_LORE_NYXIA_WIN3,
+    STR_LORE_NYXIA_TITLE,
+    STR_LORE_NYXIA_END1,
+    STR_LORE_NYXIA_END2,
+    STR_LORE_NYXIA_END3,
+    STR_LORE_MALAKOR_INTRO,
+    STR_LORE_MALAKOR_WIN1,
+    STR_LORE_MALAKOR_WIN2,
+    STR_LORE_MALAKOR_WIN3,
+    STR_LORE_MALAKOR_TITLE,
+    STR_LORE_MALAKOR_END1,
+    STR_LORE_MALAKOR_END2,
+    STR_LORE_MALAKOR_END3,
     STR_COUNT
 };
 
@@ -121,6 +172,9 @@ Lang  lang();
 const char* T(StrId id);
 const char* lang_name(Lang l);
 const char* title_of(uint8_t fighter);   // titre du combattant (FighterId)
+// Univers : 0 citation d'entree, 1..3 citations de victoire, 4 titre de la fin, 5..7 paragraphes de la fin.
+constexpr uint8_t LORE_PER_FIGHTER = 8;
+const char* lore(uint8_t fighter, uint8_t k);
 
 // Regles d'un jeu : `n` lignes, recuperees une par une.
 int         rules_lines(GameId g);
