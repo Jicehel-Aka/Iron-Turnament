@@ -700,6 +700,92 @@ static void test_chain() {
       CHECK(!restarted); }
 }
 
+// -----------------------------------------------------------------------------
+// Realisme des mouvements (retour d'un pratiquant d'arts martiaux)
+// -----------------------------------------------------------------------------
+static void test_movement_realism() {
+    std::printf("[realisme des mouvements]\n");
+    // 1. L'animation suit les phases du coup : amorce -> membre tendu des l'image qui frappe -> retour.
+    const Action attacks[] = { A_LIGHT, A_HEAVY, A_LOW_KICK, A_UPPERCUT, A_JUMP_ATTACK, A_SPECIAL_1, A_SPECIAL_2, A_SPECIAL_3 };
+    for (int id = 0; id < FIGHTER_COUNT; ++id) for (const Action a : attacks) {
+        Fighter f{}; f.id = (FighterId)id; f.action = a; f.power = 0;
+        int a0 = -1, a1 = -1;
+        CHECK(attack_window(f, a0, a1));
+        CHECK(a0 >= 0 && a1 >= a0);
+        int prev = 0; bool mono = true;
+        for (int af = 0; af < a1 + 14; ++af) {
+            const int c = attack_col(af, a0, a1);
+            if (c < prev) mono = false;
+            prev = c;
+            if (af < a0) CHECK(c <= 2);
+            else if (af <= a1) CHECK(c == 3 || c == 4);
+            else CHECK(c == 5);
+        }
+        CHECK(mono);
+        CHECK(attack_col(a0, a0, a1) == 3);                       // le coup touche, le membre est deja tendu
+    }
+    { Fighter f{}; f.action = A_IDLE; int a0, a1; CHECK(!attack_window(f, a0, a1)); }
+    // Dans le moteur : a l'image ou un jab/coup de pied touche vraiment, la colonne affichee est « membre tendu ».
+    const Action two[2] = { A_LIGHT, A_HEAVY };
+    for (const Action a : two) {
+        Match m; setup(m, KENJI, TITAN, 200); m.f[1].x = m.f[0].x + 34;
+        Input none, in; if (a == A_LIGHT) in.a = in.jp_a = true; else in.b = in.jp_b = true;
+        step_match_2p(m, in, none);
+        int hit_af = -1;
+        for (int i = 0; i < 40 && hit_af < 0; ++i) {
+            step_match_2p(m, none, none);
+            if (m.f[0].hit_confirmed) hit_af = m.f[0].action_frame;
+        }
+        int a0 = 0, a1 = 0; CHECK(attack_window(m.f[0], a0, a1));
+        CHECK(hit_af >= a0 && hit_af <= a1);
+        CHECK(attack_col(hit_af, a0, a1) >= 3);
+    }
+    // 2. Projection : l'adversaire passe AU-DESSUS du lanceur et retombe DERRIERE lui.
+    { Match m; setup(m, KENJI, TITAN, 30);
+      Input none, grab; grab.a = grab.b = grab.jp_a = true;
+      const int hp0 = m.f[1].hp;
+      const float ax0 = m.f[0].x;
+      const int face0 = m.f[0].facing;   // le lanceur se retourne vers l'adversaire une fois celui-ci passé derrière lui
+      step_match_2p(m, grab, none);
+      CHECK(m.f[0].action == A_THROW);
+      bool crossed = false;
+      for (int i = 0; i < 90; ++i) {
+          step_match_2p(m, none, none);
+          if (m.f[1].y < 0 && (m.f[1].x - m.f[0].x) * face0 < -2.0f) crossed = true;
+      }
+      CHECK(m.f[1].hp < hp0);
+      CHECK(crossed);                                              // il a traverse le lanceur en l'air
+      CHECK((m.f[1].x - m.f[0].x) * face0 < 0.0f);                 // et se retrouve derriere lui
+      CHECK(std::fabs(m.f[0].x - ax0) < 6.0f);                     // le lanceur, lui, n'a (presque) pas bouge
+    }
+    // Dos au mur : pas de place derriere le lanceur, la projection reste frontale (pas de sortie d'arene).
+    { Match m; setup(m, KENJI, TITAN, 30);
+      m.f[0].x = MIN_X + 20; m.f[1].x = MIN_X + 50; m.f[0].facing = 1; m.f[1].facing = -1;
+      Input none, grab; grab.a = grab.b = grab.jp_a = true;
+      step_match_2p(m, grab, none);
+      for (int i = 0; i < 90; ++i) step_match_2p(m, none, none);
+      CHECK(m.f[1].x >= MIN_X && m.f[1].x <= MAX_X);
+      CHECK(m.f[1].x > m.f[0].x); }
+    // 3. Recul a l'impact : decroissant, nul apres 8 images, plus marque a la tete qu'au ventre.
+    { int prev = 99; bool dec = true;
+      for (int af = 0; af < 12; ++af) { const int r = hit_recoil(af, false); if (r > prev) dec = false; prev = r; }
+      CHECK(dec);
+      CHECK(hit_recoil(0, false) > hit_recoil(0, true) && hit_recoil(0, true) > 0);
+      CHECK(hit_recoil(8, false) == 0 && hit_recoil(30, true) == 0 && hit_recoil(-1, false) == 0); }
+    // 4. L'uppercut vise le menton (reaction de tete), le jab le corps.
+    const Action two2[2] = { A_UPPERCUT, A_LIGHT };
+    for (const Action a : two2) {
+        Match m; setup(m, KENJI, TITAN, 200); m.f[1].x = m.f[0].x + 32;
+        Input none, in; in.a = in.jp_a = true; in.down = (a == A_UPPERCUT);
+        step_match_2p(m, in, none);
+        bool head = false, gut = false;
+        for (int i = 0; i < 40; ++i) { step_match_2p(m, none, none);
+            if (m.f[1].action == A_HITSTUN) head = true;
+            if (m.f[1].action == A_HITSTUN_GUT) gut = true; }
+        if (a == A_UPPERCUT) CHECK(head && !gut); else CHECK(gut && !head);
+    }
+}
+
 int main() {
     test_ladder();
     test_shortcut_and_motions();
@@ -712,6 +798,7 @@ int main() {
     test_parry_riposte();
     test_level_and_assist();
     test_chain();
+    test_movement_realism();
     test_round_flow();
     test_boss_boost();
     test_determinism();

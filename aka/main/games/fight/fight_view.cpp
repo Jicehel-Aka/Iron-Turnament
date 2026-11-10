@@ -334,18 +334,18 @@ static bool sprite_cell(const Fighter& f, const FighterDef& d, int now, int& row
         col = imin_((int)(t * 6.0f), 5);
         break;
     }
-    case A_JUMP_ATTACK: row = R_JUMP_ATTACK; y_adj = 10; col = oneshot_col(f); break;
+    case A_JUMP_ATTACK: { row = R_JUMP_ATTACK; y_adj = 10; int a0, a1; attack_window(f, a0, a1); col = attack_col(af, a0, a1); break; }
     case A_EVADE_HIGH:  row = R_EVADE_HIGH;  col = oneshot_col(f); break;
     case A_EVADE_MID:   row = R_EVADE_MID;   col = oneshot_col(f); break;
     case A_EVADE_LOW:   row = R_EVADE_LOW;   col = oneshot_col(f); break;
-    case A_LIGHT:       row = R_LIGHT;       col = oneshot_col(f); break;
-    case A_HEAVY:       row = R_HEAVY;       col = oneshot_col(f); break;
-    case A_LOW_KICK:    row = R_LOW_KICK;    col = oneshot_col(f); break;
-    case A_UPPERCUT:    row = R_UPPERCUT;    col = oneshot_col(f); break;
-    case A_THROW:       row = R_LIGHT;       col = oneshot_col(f); break;
-    case A_SPECIAL_1:   row = R_SPECIAL_1;   col = oneshot_col(f); break;
-    case A_SPECIAL_2:   row = R_SPECIAL_2;   col = oneshot_col(f); break;
-    case A_SPECIAL_3:   row = R_SPECIAL_3;   col = oneshot_col(f); break;
+    case A_LIGHT: { row = R_LIGHT; int a0, a1; attack_window(f, a0, a1); col = attack_col(af, a0, a1); break; }
+    case A_HEAVY: { row = R_HEAVY; int a0, a1; attack_window(f, a0, a1); col = attack_col(af, a0, a1); break; }
+    case A_LOW_KICK: { row = R_LOW_KICK; int a0, a1; attack_window(f, a0, a1); col = attack_col(af, a0, a1); break; }
+    case A_UPPERCUT: { row = R_UPPERCUT; int a0, a1; attack_window(f, a0, a1); col = attack_col(af, a0, a1); break; }
+    case A_THROW:       row = R_UPPERCUT;   col = af < 4 ? 2 : (af < 18 ? 4 : 5); break;   // bras leve : il soulève l'adversaire
+    case A_SPECIAL_1: { row = R_SPECIAL_1; int a0, a1; attack_window(f, a0, a1); col = attack_col(af, a0, a1); break; }
+    case A_SPECIAL_2: { row = R_SPECIAL_2; int a0, a1; attack_window(f, a0, a1); col = attack_col(af, a0, a1); break; }
+    case A_SPECIAL_3: { row = R_SPECIAL_3; int a0, a1; attack_window(f, a0, a1); col = attack_col(af, a0, a1); break; }
     case A_BLOCK_HIGH:  row = R_BLOCK_HIGH;  col = imin_(oneshot_col(f), 2); break;   // la garde se tient
     case A_BLOCK_LOW:   row = R_BLOCK_LOW;   col = imin_(oneshot_col(f), 2); break;
     case A_HITSTUN:     row = R_HITSTUN;      col = oneshot_col(f); break;
@@ -382,8 +382,9 @@ static bool draw_fighter_sprite(const Fighter& f, const FighterDef& d, float cam
     if (!spr::frame(f.id, row, col, fr)) return false;
     if (!fr.px) return true;                           // image vide : rien a dessiner
 
-    const int fx = (int)(f.x - cam_x);
-    const int fy = (int)(GROUND_Y + f.y);
+    const int recoil = (f.action == A_HITSTUN || f.action == A_HITSTUN_GUT) ? hit_recoil(f.action_frame, f.action == A_HITSTUN_GUT) : 0;
+    const int fx = (int)(f.x - cam_x) - f.facing * recoil;
+    const int fy = (int)(GROUND_Y + f.y) + (f.action == A_HITSTUN_GUT ? recoil / 2 : 0);
 
     if (f.facing > 0) {
         graphics_draw_bitmap565(fx + fr.ox, fy + fr.oy + y_adj, fr.w, fr.h, fr.px, true);

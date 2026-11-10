@@ -302,6 +302,24 @@ void start_next_round(Match& m);
 // Applique le coefficient du niveau `diff` au combattant de P2 (pilote par l'IA).
 void set_ai_level(Match& m, Difficulty diff, int assist = 0);
 
+// Images actives (premiere, derniere incluses) d'une attaque ; faux si l'action n'est pas une attaque.
+bool attack_window(const Fighter& f, int& a0, int& a1);
+
+// Colonne (0..5) de la planche pour une attaque : armement 0..2 pendant l'amorce, extension 3..4 pendant les
+// images actives (le coup touche quand le membre est tendu), retour 5 pendant la retombee.
+inline int attack_col(int af, int a0, int a1) {
+    if (af < a0) return a0 > 0 ? af * 3 / a0 : 0;
+    if (af <= a1) return 3 + (af - a0) * 2 / (a1 - a0 + 1);
+    return 5;
+}
+
+// Recul visuel (en pixels, vers l'arriere) du combattant touche, sur les premieres images : le corps encaisse.
+inline int hit_recoil(int af, bool gut) {
+    const int len = 8;
+    if (af < 0 || af >= len) return 0;
+    return ((gut ? 3 : 5) * (len - af) + len - 1) / len;
+}
+
 // UNE image logique a 60 Hz. `p1_in` : entrees du joueur. P2 est pilote par l'IA.
 void step_match(Match& m, const Input& p1_in, Difficulty diff);
 
