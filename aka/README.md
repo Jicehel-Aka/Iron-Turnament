@@ -183,7 +183,30 @@ touches (il faudrait d'abord distinguer vrai combo et coups rapprochés) ; rollb
 - **Son (musicien)** : le son venait du jeu d'échecs (« bois sur le bois », musique volontairement discrète). Nouveaux effets de combat
   (claque, choc grave, garde métallique, souffle, balayage du spécial, tintement de parade, saut), nouvelle musique de combat
   (basse pulsée, arpèges, 135 ms la croche) et morceau dédié au duel final (112 ms), sur console comme sur PC.
+- **Enchaînement (3e sprint)** : coup léger au sol qui touche (ou est gardé) puis B = coup lourd, une fois ; B pressé pendant le gel d'impact est mémorisé.
 - **Ergonomie (2e sprint)** : le menu pause a une page **Coups** (spéciaux du combattant, mouvement et raccourci, SUPER).
+
+## Comparatif avec des jeux équivalents (3e sprint)
+De nouveaux testeurs « connaisseurs » (anciens des salles d'arcade, joueurs de Street Fighter II/Alpha, Mortal Kombat, Samurai Shodown,
+Tekken, Killer Instinct) ont comparé Iron Tournament à ces références **de mémoire et par grille de fonctions : aucun de ces jeux n'a
+été rejoué pour l'occasion**. Verdict par fonction :
+
+| Fonction (référence du genre) | Iron Tournament |
+|---|---|
+| Tampon d'entrée, annulation en spécial, Ki Cancel, super | oui |
+| Dégâts dégressifs en combo, garde haute/basse, grattage | oui |
+| Étourdissement, esquives, projection, fatalités (Mortal Kombat) | oui |
+| Punition du spam (peu courante dans le genre) | oui : parade punitive |
+| Enchaînement de base léger → lourd (Alpha) | **ajouté** (un seul maillon) |
+| Pression à l'impact : touches mémorisées pendant le gel | **corrigé** : elles étaient perdues |
+| Liste des coups en pause, revanche immédiate, aides aux débutants | oui |
+| Mode entraînement | non |
+| Désamorçage de projection (throw tech), pushblock, options au relevé | non |
+| Réseau avec retour arrière (rollback) | non (lockstep : bon en local, sensible à la latence) |
+| Nombre de combattants | 6 (SF II : 8, KI : 10+) |
+
+Retours à traiter ensuite : mode entraînement (le plus demandé), désamorçage de projection, rollback pour jouer à distance.
+
 Non vérifié : le rendu sonore à l'oreille (synthèse écrite sans écoute) et le ressenti humain de l'aide aux débutants.
 
 ## Cohérence physique des animations

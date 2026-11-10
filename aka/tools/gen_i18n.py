@@ -153,6 +153,8 @@ RULES = {
   ("PARADE auto, l'attaquant est etourdi.", "automatic PARRY stuns the attacker.", "automatische PARADE betäubt ihn.", "PARADA automatica: queda aturdido.", "PARATA automatica: resta stordito."),
   ("Garde ou parade = RIPOSTE : le coup", "Blocking or parrying opens a RIPOSTE:", "Block oder Parade = GEGENSCHLAG:", "Guardia o parada = REPLICA: el golpe", "Parata o guardia = RIPOSTA: il colpo"),
   ("suivant fait +25 % de degats.", "your next hit deals +25 % damage.", "der nächste Treffer: +25 % Schaden.", "siguiente hace +25 % de daño.", "seguente fa +25 % di danno."),
+  ("Poing touche puis B = ENCHAINE", "A punch that lands, then B = CHAIN", "Faust trifft, dann B = KETTE", "Punetazo que da y luego B = CADENA", "Pugno a segno e poi B = CATENA"),
+  ("avec un coup lourd (une seule fois).", "into a heavy kick (once only).", "in einen schweren Tritt (einmal).", "a un golpe fuerte (una vez).", "in un calcio pesante (una volta)."),
   ("", "", "", "", ""),
   ("Le coup qui gagne le match etourdit :","The blow that wins the match stuns:", "Der matchentscheidende Treffer",       "El golpe que gana el combate",       "Il colpo che vince l'incontro"),
   ("ACHEVEZ-LE ! Appuyez sur C pres de",   "FINISH HIM! Press C next to the",     "betäubt: GIB ES IHM! Drücke C",     "aturde: ¡ACABALO! Pulsa C junto",    "stordisce: FINISCILO! Premi C"),

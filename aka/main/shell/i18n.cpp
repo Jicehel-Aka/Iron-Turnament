@@ -488,7 +488,7 @@ static const char* const TABLE[LANG_COUNT][STR_COUNT] = {
     },
 };
 
-static const char* const RULES_FIGHT[LANG_COUNT][37] = {
+static const char* const RULES_FIGHT[LANG_COUNT][39] = {
     {
         "Gagne le nombre de manches choisi",
         "(Options). A zero, le plus en forme",
@@ -515,6 +515,8 @@ static const char* const RULES_FIGHT[LANG_COUNT][37] = {
         "PARADE auto, l'attaquant est etourdi.",
         "Garde ou parade = RIPOSTE : le coup",
         "suivant fait +25 % de degats.",
+        "Poing touche puis B = ENCHAINE",
+        "avec un coup lourd (une seule fois).",
         "",
         "Le coup qui gagne le match etourdit :",
         "ACHEVEZ-LE ! Appuyez sur C pres de",
@@ -554,6 +556,8 @@ static const char* const RULES_FIGHT[LANG_COUNT][37] = {
         "automatic PARRY stuns the attacker.",
         "Blocking or parrying opens a RIPOSTE:",
         "your next hit deals +25 % damage.",
+        "A punch that lands, then B = CHAIN",
+        "into a heavy kick (once only).",
         "",
         "The blow that wins the match stuns:",
         "FINISH HIM! Press C next to the",
@@ -593,6 +597,8 @@ static const char* const RULES_FIGHT[LANG_COUNT][37] = {
         "automatische PARADE betäubt ihn.",
         "Block oder Parade = GEGENSCHLAG:",
         "der nächste Treffer: +25 % Schaden.",
+        "Faust trifft, dann B = KETTE",
+        "in einen schweren Tritt (einmal).",
         "",
         "Der matchentscheidende Treffer",
         "betäubt: GIB ES IHM! Drücke C",
@@ -632,6 +638,8 @@ static const char* const RULES_FIGHT[LANG_COUNT][37] = {
         "PARADA automatica: queda aturdido.",
         "Guardia o parada = REPLICA: el golpe",
         "siguiente hace +25 % de daño.",
+        "Punetazo que da y luego B = CADENA",
+        "a un golpe fuerte (una vez).",
         "",
         "El golpe que gana el combate",
         "aturde: ¡ACABALO! Pulsa C junto",
@@ -671,6 +679,8 @@ static const char* const RULES_FIGHT[LANG_COUNT][37] = {
         "PARATA automatica: resta stordito.",
         "Parata o guardia = RIPOSTA: il colpo",
         "seguente fa +25 % di danno.",
+        "Pugno a segno e poi B = CATENA",
+        "in un calcio pesante (una volta).",
         "",
         "Il colpo che vince l'incontro",
         "stordisce: FINISCILO! Premi C",
@@ -685,7 +695,7 @@ static const char* const RULES_FIGHT[LANG_COUNT][37] = {
         "MENU esce dalla partita.",
     },
 };
-constexpr int RULES_FIGHT_N = 37;
+constexpr int RULES_FIGHT_N = 39;
 
 static const char* const CONTROLS[LANG_COUNT][10] = {
     {

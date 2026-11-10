@@ -798,7 +798,10 @@ static void update_fighter(Match& m, Fighter& f, Fighter& opp, const Input& in) 
     if (in.jp_b)       f.buf_b  = INPUT_BUFFER; else if (f.buf_b)  --f.buf_b;
     if (in.jp_special) f.buf_sp = INPUT_BUFFER; else if (f.buf_sp) --f.buf_sp;
     Input e = in;                                    // entrees effectives (tampon compris)
-    if (can_act(f) && f.y >= 0) {
+    const bool special_cancel =
+        (f.action == A_LIGHT || f.action == A_HEAVY || f.action == A_UPPERCUT) &&
+        f.hit_confirmed && f.y >= 0;
+    if ((can_act(f) && f.y >= 0) || special_cancel) {
         if (f.buf_a)  e.jp_a = true;
         if (f.buf_b)  e.jp_b = true;
         if (f.buf_sp) e.jp_special = true;
@@ -811,9 +814,6 @@ static void update_fighter(Match& m, Fighter& f, Fighter& opp, const Input& in) 
 
     // Annulation d'un normal qui a touché par un spécial (« 2-in-1 cancel »), et « Ki Cancel » :
     // un EX peut annuler la fin d'un spécial qui a touché ou ete garde (50 Ki).
-    const bool special_cancel =
-        (f.action == A_LIGHT || f.action == A_HEAVY || f.action == A_UPPERCUT) &&
-        f.hit_confirmed && f.y >= 0;
     const bool ki_cancel =
         is_special(f.action) && f.power < 2 && f.hit_confirmed && f.y >= 0 && ex_req &&
         f.action_frame > def(f.id).specials[f.action - A_SPECIAL_1].startup +
@@ -833,6 +833,16 @@ static void update_fighter(Match& m, Fighter& f, Fighter& opp, const Input& in) 
             apply_physics(f);
             return;
         }
+    }
+
+    // Enchainement (« chain ») : un coup leger au sol qui a touche ou ete garde peut etre suivi d'un coup lourd (B)
+    // avant la fin de sa retombee. Un seul maillon : le lourd ne s'enchaine sur rien.
+    if (f.action == A_LIGHT && f.hit_confirmed && f.y >= 0 && (in.jp_b || f.buf_b) && !in.down && m.phase == PH_FIGHT) {
+        clear_buffer();
+        f.vx = 0; sfx(m, SFX_WHIFF);
+        start_action(f, A_HEAVY, imax(20, 24 - (int)std::lround((def(f.id).recovery - 55) * 0.08f)));
+        apply_physics(f);
+        return;
     }
 
     // États verrouillés.
@@ -1134,7 +1144,19 @@ static void step_impl(Match& m, const Input& p1_in, const Input* p2_given, Diffi
     }
 
     // Hitstop : gel d'impact.
-    if (m.hitstop > 0) { m.hitstop--; return; }
+    // Les pressions faites pendant le gel sont memorisees (sinon, au moment meme de l'impact, quand on enchaine ou
+    // qu'on annule, la touche serait perdue).
+    if (m.hitstop > 0) {
+        m.hitstop--;
+        auto buffer = [](Fighter& f, const Input& in) {
+            if (in.jp_a) f.buf_a = INPUT_BUFFER;
+            if (in.jp_b) f.buf_b = INPUT_BUFFER;
+            if (in.jp_special) f.buf_sp = INPUT_BUFFER;
+        };
+        buffer(m.f[0], p1_in);
+        if (p2_given) buffer(m.f[1], *p2_given);
+        return;
+    }
 
     Fighter& P1 = m.f[0];
     Fighter& P2 = m.f[1];

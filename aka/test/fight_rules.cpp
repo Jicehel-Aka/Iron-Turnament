@@ -656,6 +656,50 @@ static void test_level_and_assist() {
       CHECK(master_low > low); }
 }
 
+// Enchainement leger -> lourd
+static void test_chain() {
+    std::printf("[enchainement leger -> lourd]\n");
+    auto run = [](bool chain, int* combo_max, int* dmg) {
+        Match m; setup(m, KENJI, TITAN, 200);
+        m.f[1].x = m.f[0].x + 30;
+        Input none, a, b; a.a = a.jp_a = true; b.b = b.jp_b = true;
+        const int hp0 = m.f[1].hp;
+        st(m, a);
+        int pressed = 0; *combo_max = 0;
+        for (int i = 0; i < 80; ++i) {
+            const bool go = chain && !pressed && m.f[0].action == A_LIGHT && m.f[0].hit_confirmed;
+            if (go) { st(m, b); pressed = 1; } else st(m, none);
+            if (m.f[1].combo_count > *combo_max) *combo_max = m.f[1].combo_count;
+        }
+        *dmg = hp0 - m.f[1].hp;
+        return pressed;
+    };
+    int c1, d1, c2, d2;
+    const int p1 = run(false, &c1, &d1), p2 = run(true, &c2, &d2);
+    CHECK(p1 == 0 && p2 == 1);
+    CHECK(c1 == 1);                 // le jab seul : un coup
+    CHECK(c2 >= 2);                 // jab + lourd : un vrai enchainement (la cible n'est pas libre entre les deux)
+    CHECK(d2 > d1);
+    // Une pression faite PENDANT le gel d'impact n'est pas perdue : le lourd part quand meme.
+    { Match m; setup(m, KENJI, TITAN, 200); m.f[1].x = m.f[0].x + 30;
+      Input none, a, b; a.a = a.jp_a = true; b.b = b.jp_b = true;
+      step_match_2p(m, a, none);
+      for (int i = 0; i < 20 && !(m.f[0].hit_confirmed && m.hitstop > 1); ++i) step_match_2p(m, none, none);
+      CHECK(m.hitstop > 1);
+      step_match_2p(m, b, none);                       // appui unique, en plein gel
+      bool heavy = false;
+      for (int i = 0; i < 30; ++i) { step_match_2p(m, none, none); if (m.f[0].action == A_HEAVY) heavy = true; }
+      CHECK(heavy); }
+    // Jamais de lourd -> lourd, ni de chaine depuis un lourd.
+    { Match m; setup(m, KENJI, TITAN, 200); m.f[1].x = m.f[0].x + 30;
+      Input none, b; b.b = b.jp_b = true;
+      st(m, b);
+      for (int i = 0; i < 40 && !(m.f[0].action == A_HEAVY && m.f[0].hit_confirmed); ++i) st(m, none);
+      bool restarted = false; int last = m.f[0].action_frame;
+      for (int i = 0; i < 12; ++i) { st(m, b); if (m.f[0].action == A_HEAVY && m.f[0].action_frame < last) restarted = true; last = m.f[0].action_frame; }
+      CHECK(!restarted); }
+}
+
 int main() {
     test_ladder();
     test_shortcut_and_motions();
@@ -667,6 +711,7 @@ int main() {
     test_ground_rules();
     test_parry_riposte();
     test_level_and_assist();
+    test_chain();
     test_round_flow();
     test_boss_boost();
     test_determinism();
