@@ -96,11 +96,17 @@ void init_match(Match& m, FighterId p1, FighterId p2, bool boss_match, uint32_t 
     create_fighter(m.f[1], p2, 2, boss_match);
 }
 
+static int assist_cap(int level) { return level == DIFF_NOVICE ? ASSIST_MAX : level == DIFF_ARCADE ? ASSIST_MAX_ARCADE : 0; }
+
 static void apply_level_scales(Match& m) {
     const int L = m.ai_level;
     float ai = g_dmg_scale[L][m.f[1].id] * g_level_ai_mult[L];
     float hu = g_dmg_scale[DIFF_MASTER][m.f[0].id] * g_level_human_mult[L];
-    for (int i = 0; i < m.assist; ++i) { ai *= ASSIST_AI; hu *= ASSIST_HUMAN; }
+    const bool arcade = L == DIFF_ARCADE;
+    for (int i = 0; i < m.assist; ++i) {
+        ai *= arcade ? ASSIST_AI_ARCADE : ASSIST_AI;
+        hu *= arcade ? ASSIST_HUMAN_ARCADE : ASSIST_HUMAN;
+    }
     m.f[1].dmg_scale = ai;
     m.f[0].dmg_scale = hu;
 }
@@ -108,7 +114,7 @@ static void apply_level_scales(Match& m) {
 void set_ai_level(Match& m, Difficulty diff, int assist) {
     m.leveled = true;
     m.ai_level = (uint8_t)diff;
-    m.assist = (uint8_t)(diff == DIFF_NOVICE ? imax(0, imin(ASSIST_MAX, assist)) : 0);
+    m.assist = (uint8_t)imax(0, imin(assist_cap(diff), assist));
     apply_level_scales(m);
 }
 
@@ -118,8 +124,8 @@ void start_next_round(Match& m) {
     const FighterId i1 = m.f[0].id, i2 = m.f[1].id;
     const float sc1 = m.f[0].dmg_scale, sc2 = m.f[1].dmg_scale;   // les coefficients du niveau valent pour TOUT le match
 
-    if (m.leveled && m.ai_level == DIFF_NOVICE) {
-        if (m.winner_slot == 2 && m.assist < ASSIST_MAX) m.assist++;
+    if (m.leveled) {
+        if (m.winner_slot == 2 && m.assist < assist_cap(m.ai_level)) m.assist++;
         else if (m.winner_slot == 1 && m.assist > 0) m.assist--;
     }
 

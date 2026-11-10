@@ -620,14 +620,19 @@ static void test_level_and_assist() {
       CHECK(std::fabs(m.f[1].dmg_scale - ai0 * ASSIST_AI * ASSIST_AI * ASSIST_AI) < 1e-5f);
       m.winner_slot = 1; start_next_round(m);
       CHECK(m.assist == ASSIST_MAX - 1); }
-    // Pas d'aide en Arcade ni en Maitre, meme apres des defaites.
-    for (int d = 1; d < 3; ++d) {
-        Match m; init_match(m, KENJI, TITAN, false, 9);
-        set_ai_level(m, (Difficulty)d, 3);
-        CHECK(m.assist == 0);
-        m.winner_slot = 2; start_next_round(m);
-        CHECK(m.assist == 0);
-    }
+    // Arcade : aide legere (2 paliers, plus faible qu'en Novice) ; Maitre : jamais d'aide, meme apres des defaites.
+    { Match m; init_match(m, KENJI, TITAN, false, 9, MatchRules{3, 99});
+      set_ai_level(m, DIFF_ARCADE);
+      const float ai0 = m.f[1].dmg_scale;
+      for (int i = 0; i < 4; ++i) { m.winner_slot = 2; start_next_round(m); }
+      CHECK(m.assist == ASSIST_MAX_ARCADE);
+      CHECK(std::fabs(m.f[1].dmg_scale - ai0 * ASSIST_AI_ARCADE * ASSIST_AI_ARCADE) < 1e-5f);
+      CHECK(ASSIST_AI_ARCADE > ASSIST_AI && ASSIST_HUMAN_ARCADE < ASSIST_HUMAN); }
+    { Match m; init_match(m, KENJI, TITAN, false, 9);
+      set_ai_level(m, DIFF_MASTER, 3);
+      CHECK(m.assist == 0);
+      m.winner_slot = 2; start_next_round(m);
+      CHECK(m.assist == 0); }
     // Aide de depart (nouvel essai apres une defaite) : plafonnee et seulement en Novice.
     { Match m; init_match(m, KENJI, TITAN, false, 9);
       set_ai_level(m, DIFF_NOVICE, 2); CHECK(m.assist == 2);

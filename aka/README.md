@@ -168,21 +168,22 @@ touches (il faudrait d'abord distinguer vrai combo et coups rapprochés) ; rollb
 
 | testeur | Novice | Arcade | Maître |
 |---|---|---|---|
-| Karim | 99 % | 57 % | 57 % |
-| Léa | 71 % | 2 % | 3 % |
-| Tom | 22 % | 0 % | 0 % |
+| Karim | 99 % | 61 % | 55 % |
+| Léa | 71 % | 5 % | 3 % |
+| Tom | 23 % | 0 % | 0 % |
 
 (victoires par match ; avant la correction ci-dessous : Léa 32 % et Tom 0 % en Novice.) Ce qui est sorti de la réunion :
 - **Bug (programmeur)** : les coefficients de niveau (mode facile, équilibrage) étaient perdus dès la 2e manche, car chaque manche
   recréait les combattants. Ils valent maintenant pour tout le match, et l'équilibrage a été refait.
 - **Débutants (testeur faible, ergonome)** : en Novice, chaque manche perdue adoucit la suivante (l'IA cogne ×0,78, le joueur ×1,12,
-  3 paliers au plus) ; sous 25 % de vie le joueur prend 25 % de dégâts en moins de l'IA (« zone de clémence »). Arcade et Maître : aucune aide.
+  3 paliers au plus) ; sous 25 % de vie le joueur prend 25 % de dégâts en moins de l'IA (« zone de clémence »). En Arcade, même principe en plus léger (×0,92 / ×1,04, 2 paliers) ; Maître : aucune aide.
 - **Flux (chef de projet)** : écran de fin avec **Revanche** (duel) ou **Réessayer** (tournoi perdu) qui relance le combat sans repasser
   par les menus ; chaque nouvel essai du même combat ajoute un palier d'aide (Novice). Pas de revanche en réseau.
 - **Arcade (testeur graphismes)** : compteur « N HITS » du côté de la victime à partir de 2 coups enchaînés (rouge dès 4).
 - **Son (musicien)** : le son venait du jeu d'échecs (« bois sur le bois », musique volontairement discrète). Nouveaux effets de combat
   (claque, choc grave, garde métallique, souffle, balayage du spécial, tintement de parade, saut), nouvelle musique de combat
   (basse pulsée, arpèges, 135 ms la croche) et morceau dédié au duel final (112 ms), sur console comme sur PC.
+- **Ergonomie (2e sprint)** : le menu pause a une page **Coups** (spéciaux du combattant, mouvement et raccourci, SUPER).
 Non vérifié : le rendu sonore à l'oreille (synthèse écrite sans écoute) et le ressenti humain de l'aide aux débutants.
 
 ## Cohérence physique des animations

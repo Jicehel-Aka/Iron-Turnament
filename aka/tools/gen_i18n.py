@@ -34,6 +34,7 @@ S = [
  ('NET_ERR_LEFT', "L'adversaire est parti", "Opponent left",      "Gegner hat verlassen", "El rival se marchó", "L'avversario è uscito"),
  ('NET_ERR_LINK', "Liaison coupée",        "Link lost",            "Verbindung verloren", "Enlace perdido",      "Collegamento perso"),
  ('RULES',        "Règles du jeu",         "Rules",                "Spielregeln",         "Reglas",              "Regole"),
+ ('MOVES',        "Coups",                 "Moves",                "Techniken",          "Golpes",             "Mosse"),
  ('CONTROLS',     "Commandes",             "Controls",             "Steuerung",           "Controles",           "Comandi"),
  ('OPTIONS',      "Options",               "Options",              "Optionen",            "Opciones",            "Opzioni"),
  ('QUIT',         "Quitter",               "Quit",                 "Beenden",             "Salir",               "Esci"),

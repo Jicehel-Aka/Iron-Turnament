@@ -38,6 +38,7 @@ enum StrId : uint16_t {
     STR_NET_ERR_LEFT,
     STR_NET_ERR_LINK,
     STR_RULES,
+    STR_MOVES,
     STR_CONTROLS,
     STR_OPTIONS,
     STR_QUIT,

@@ -154,6 +154,9 @@ constexpr float RIPOSTE_BONUS  = 1.25f;
 constexpr int   ASSIST_MAX = 3;
 constexpr float MERCY_SCALE = 0.75f;    // Novice : degats de l'IA contre un joueur sous 25 % de vie
 constexpr float ASSIST_AI = 0.78f, ASSIST_HUMAN = 1.12f;
+// Arcade : meme principe en plus leger (2 paliers au plus). Maitre : jamais d'aide.
+constexpr int   ASSIST_MAX_ARCADE = 2;
+constexpr float ASSIST_AI_ARCADE = 0.92f, ASSIST_HUMAN_ARCADE = 1.04f;
 constexpr int KI_MAX = 100, KI_EX_COST = 50, KI_SUPER_COST = 100;
 constexpr int SUPER_STARTUP = 16, SUPER_ACTIVE = 8, SUPER_RECOVERY = 30;   // images logiques du SUPER
 
