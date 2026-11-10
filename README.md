@@ -26,3 +26,7 @@ et en version native pour la console **Gamebuino AKA** (ESP32-S3), avec une **ve
 ## Pour aller plus loin
 Tout le détail technique, l'équilibrage mesuré, les tests et ce qui n'est pas encore vérifié : **[aka/README.md](aka/README.md)**.
 Le prototype web se lance avec `npm install && npm run dev` (Vite / TypeScript).
+
+## Licence
+
+Création originale de Jicehel (Jean-Charles Lebeau), publiée sous licence **[Creative Commons Attribution - Pas d'Utilisation Commerciale 4.0 (CC BY-NC 4.0)](LICENSE)** : tu peux copier, modifier et partager librement, avec mention de l'auteur, mais pas à des fins commerciales. Le texte complet est dans le fichier [LICENSE](LICENSE). Les bibliothèques et ressources tierces gardent leur propre licence.
