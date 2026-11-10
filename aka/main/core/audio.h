@@ -38,6 +38,7 @@ enum class Tune : uint8_t {
     Game,       // partie : lent, discret, ne doit JAMAIS distraire du calcul
     Victory,
     Defeat,
+    Boss,       // duel final : plus rapide et plus tendu que la musique de combat
 };
 
 void audio_play_tune(Tune t);
@@ -65,6 +66,14 @@ void sfx_promote();       // promotion en dame : arpège ascendant
 void sfx_gameover();      // partie perdue / gagnée
 void sfx_draw();          // nulle
 void sfx_illegal();       // coup impossible : buzz court et sec
+// Effets de combat (Iron Tournament)
+void sfx_hit_light();     // coup leger qui touche : claque seche
+void sfx_hit_heavy();     // coup lourd / projection : choc grave
+void sfx_block();         // garde : choc metallique
+void sfx_whoosh();        // coup dans le vide : souffle discret
+void sfx_special();       // special : balayage ascendant
+void sfx_parry();         // parade punitive : tintement brillant
+void sfx_jump();          // saut : petit bond
 void sfx_menu_ok();
 void sfx_menu_back();
 

@@ -971,6 +971,21 @@ static void draw_hud(const Match& m) {
     graphics_draw_text_center_raw(11, t, (m.round_sec != 0 && m.timer_frames < 10 * 60) ? graphics_make_color(239, 68, 68) : ui::C_TEXT);
 }
 
+// Compteur de coups (arcade) : « 3 HITS » du cote de la victime, des 2 coups enchaines.
+static void draw_combo(const Match& m) {
+    for (int i = 0; i < 2; ++i) {
+        const Fighter& v = m.f[i];
+        if (v.combo_count < 2 || v.combo_timer <= 0 || m.phase != PH_FIGHT) continue;
+        char t[16];
+        snprintf(t, sizeof t, "%d HITS", (int)v.combo_count);
+        const int w = graphics_text_width(t);
+        const int x = i == 0 ? 8 : SCR_W - 8 - w;
+        const uint16_t c = v.combo_count >= 4 ? graphics_make_color(255, 70, 90) : graphics_make_color(250, 204, 21);
+        graphics_fill_rect_raw(x - 3, HUD_H + 8, w + 6, 14, graphics_make_color(10, 8, 16));
+        graphics_draw_text_raw(x, HUD_H + 11, t, c);
+    }
+}
+
 static void draw_banner(const Match& m) {
     if (m.banner == BN_NONE || m.banner_timer <= 0) return;
     char b1[40], b2[48];
@@ -1037,6 +1052,7 @@ void draw_match(const Match& m, uint32_t now_ms) {
     }
 
     draw_hud(m);
+    draw_combo(m);
     draw_banner(m);
 }
 
@@ -1107,16 +1123,17 @@ void play_sfx(uint16_t b) {
     if (b & SFX_SUPER)         { sfx_multi_capture(); return; }
     if (b & SFX_KO)            { sfx_gameover();      return; }
     if (b & SFX_FINISH_STING)  { sfx_promote();       return; }
-    if (b & SFX_HEAVY)         { sfx_capture();       return; }
-    if (b & SFX_THROW)         { sfx_capture();       return; }
-    if (b & SFX_SPECIAL)       { sfx_move();          return; }
+    if (b & SFX_PARRY)         { sfx_parry();         return; }
+    if (b & SFX_HEAVY)         { sfx_hit_heavy();     return; }
+    if (b & SFX_THROW)         { sfx_hit_heavy();     return; }
+    if (b & SFX_SPECIAL)       { sfx_special();       return; }
     if (b & SFX_TELEPORT)      { sfx_select();        return; }
-    if (b & SFX_LIGHT)         { sfx_select();        return; }
-    if (b & SFX_BLOCK)         { sfx_cancel();        return; }
+    if (b & SFX_LIGHT)         { sfx_hit_light();     return; }
+    if (b & SFX_BLOCK)         { sfx_block();         return; }
     if (b & SFX_VICTORY)       { sfx_promote();       return; }
     if (b & SFX_BELL)          { sfx_menu_ok();       return; }
-    if (b & SFX_JUMP)          { sfx_cursor();        return; }
-    if (b & SFX_WHIFF)         { sfx_cursor();        return; }
+    if (b & SFX_JUMP)          { sfx_jump();          return; }
+    if (b & SFX_WHIFF)         { sfx_whoosh();        return; }
 }
 
 } // namespace fight

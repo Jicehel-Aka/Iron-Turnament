@@ -62,6 +62,7 @@ static fight::FighterId s_player = fight::KENJI;
 static fight::FighterId s_foe = fight::KROWEN;
 static fight::FighterId s_ladder[5];
 static int  s_bout = 0;
+static int  s_retries = 0;               // essais successifs du meme combat apres une defaite (aide en Novice)
 
 // Reseau (2 joueurs) : liaison choisie, role, et erreur a afficher
 static bool s_net = false;               // la partie en cours est une partie reseau
@@ -122,9 +123,17 @@ static void start_bout() {
     s.level  = s_cfg.level;
     s.rounds_to_win = s_cfg.rounds;
     s.round_sec     = s_cfg.time_idx >= 3 ? 0 : kTimes[s_cfg.time_idx];
+    s.assist        = (uint8_t)(s_retries > 3 ? 3 : s_retries);
     s_game->start(s);
-    audio_play_tune(Tune::Game);
+    audio_play_tune(s.boss ? Tune::Boss : Tune::Game);
     s_state = State::Playing;
+}
+
+// Revanche (duel) ou nouvel essai (tournoi perdu) : jamais en reseau, ni apres le titre de champion.
+static bool game_over_can_retry() {
+    if (s_net) return false;
+    if (s_mode == Mode::Duel) return true;
+    return s_game->outcome() != OUT_WIN;
 }
 
 static void begin_match() {
@@ -134,6 +143,7 @@ static void begin_match() {
         s_foe = s_ladder[0];
     }
     s_sel = 0;
+    s_retries = 0;
     s_state = State::Versus;
 }
 
@@ -437,6 +447,7 @@ static void update_playing() {
     if (o == OUT_WIN && s_mode == Mode::Tournament && s_bout < 4) {
         // Combat suivant.
         sfx_promote();
+        s_retries = 0;
         ++s_bout;
         s_foe = s_ladder[s_bout];
         s_state = State::Versus;
@@ -524,7 +535,15 @@ void update(uint32_t now) {
             break;
 
         case State::GameOver:
-            if (input_was_pressed(Button::A) || input_was_pressed(Button::B)) { sfx_menu_ok(); go_menu(); }
+            if (game_over_can_retry()) {
+                if (menu_nav(s_sel, 2)) {
+                    if (s_sel == 0) {                                   // revanche / nouvel essai : directement au combat
+                        if (s_mode == Mode::Tournament) ++s_retries; else s_retries = 0;
+                        start_bout();
+                    } else go_menu();
+                }
+                if (input_was_pressed(Button::B)) { sfx_menu_back(); go_menu(); }
+            } else if (input_was_pressed(Button::A) || input_was_pressed(Button::B)) { sfx_menu_ok(); go_menu(); }
             break;
 
         case State::ConfirmQuit:
@@ -616,8 +635,13 @@ void draw() {
             const char* t = o == OUT_WIN ? (!s_net && s_mode == Mode::Tournament ? i18n::T(i18n::STR_CHAMPION)
                                                                        : i18n::T(i18n::STR_YOU_WIN))
                                          : i18n::T(i18n::STR_YOU_LOSE);
-            const ui::Menu m { t, { i18n::T(i18n::STR_BACK) }, 1 };
-            ui::draw_menu(m, 0);
+            if (game_over_can_retry()) {
+                const ui::Menu m { t, { i18n::T(s_mode == Mode::Tournament ? i18n::STR_RETRY : i18n::STR_REMATCH), i18n::T(i18n::STR_BACK) }, 2 };
+                ui::draw_menu(m, s_sel);
+            } else {
+                const ui::Menu m { t, { i18n::T(i18n::STR_BACK) }, 1 };
+                ui::draw_menu(m, 0);
+            }
             break;
         }
         case State::ConfirmQuit: {

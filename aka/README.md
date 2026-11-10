@@ -119,8 +119,9 @@ de quelques dizaines de ms de latence ; ce serait un autre chantier (retour arri
 `sh test/run_balance.sh [parties] [niveau 0-2]` joue des milliers de matchs complets sur PC (1 à 30 s selon le nombre) et affiche
 la matrice de victoires des six combattants, la durée moyenne et l'écart entre niveaux. `--tune` règle automatiquement les
 coefficients de dégâts `g_dmg_scale[niveau][combattant]` (fight_data.cpp) : le joueur utilise toujours la ligne Maître, l'IA
-celle de son niveau. Résultats actuels (100 matchs par paire) : taux de victoire moyen par combattant de 48 à 56 % (Maître), 46 à 57 % (Arcade),
-45 à 55 % (Novice) ; Arcade bat Novice 77 %, Maître bat Arcade 64 %.
+celle de son niveau. Résultats actuels (60 matchs par paire, réglage refait après la correction « niveaux sur tout le match », voir plus bas) :
+taux de victoire moyen par combattant de 45 à 56 % (Maître), 46 à 54 % (Arcade), 45 à 55 % (Novice) ; Arcade bat Novice 81 %,
+Maître bat Arcade 60 %.
 Le balancement est celui de l'IA : un joueur humain n'en profitera pas de la même façon ; certaines paires restent très
 déséquilibrées (Krowen/Nyxia). Avant ce réglage, ~95 % des dégâts venaient des coups spéciaux et Titan gagnait 98 % de ses matchs.
 
@@ -159,6 +160,30 @@ touches (il faudrait d'abord distinguer vrai combo et coups rapprochés) ; rollb
   Mesure (`sh test/run_audit.sh bots`, victoires du robot) : un robot qui répète une seule action (balayage, jab, boule, saut)
   gagne 5 à 39 % contre Novice, 4 à 13 % contre Arcade/Maître, alors qu'un joueur qui varie (IA Arcade pilotant P1) gagne 84 %
   contre Novice, 52 % contre Arcade, 39 % contre Maître. Le robot « joueur varié » n'est qu'un substitut : à confirmer avec un humain.
+
+## Recette « agence » : trois testeurs, une réunion de livraison
+`sh test/run_audit.sh playtest [N]` fait jouer trois profils virtuels contre les trois niveaux (36 paires de combattants) :
+**Karim**, fan de jeux de combat (l'IA Maître aux commandes) ; **Léa**, arcade, qui matraque les boutons sans garder ;
+**Tom**, débutant (un ordre toutes les 0,3 s, garde rarement). Ce sont des robots : ils mesurent des tendances, pas le plaisir.
+
+| testeur | Novice | Arcade | Maître |
+|---|---|---|---|
+| Karim | 99 % | 57 % | 57 % |
+| Léa | 71 % | 2 % | 3 % |
+| Tom | 22 % | 0 % | 0 % |
+
+(victoires par match ; avant la correction ci-dessous : Léa 32 % et Tom 0 % en Novice.) Ce qui est sorti de la réunion :
+- **Bug (programmeur)** : les coefficients de niveau (mode facile, équilibrage) étaient perdus dès la 2e manche, car chaque manche
+  recréait les combattants. Ils valent maintenant pour tout le match, et l'équilibrage a été refait.
+- **Débutants (testeur faible, ergonome)** : en Novice, chaque manche perdue adoucit la suivante (l'IA cogne ×0,78, le joueur ×1,12,
+  3 paliers au plus) ; sous 25 % de vie le joueur prend 25 % de dégâts en moins de l'IA (« zone de clémence »). Arcade et Maître : aucune aide.
+- **Flux (chef de projet)** : écran de fin avec **Revanche** (duel) ou **Réessayer** (tournoi perdu) qui relance le combat sans repasser
+  par les menus ; chaque nouvel essai du même combat ajoute un palier d'aide (Novice). Pas de revanche en réseau.
+- **Arcade (testeur graphismes)** : compteur « N HITS » du côté de la victime à partir de 2 coups enchaînés (rouge dès 4).
+- **Son (musicien)** : le son venait du jeu d'échecs (« bois sur le bois », musique volontairement discrète). Nouveaux effets de combat
+  (claque, choc grave, garde métallique, souffle, balayage du spécial, tintement de parade, saut), nouvelle musique de combat
+  (basse pulsée, arpèges, 135 ms la croche) et morceau dédié au duel final (112 ms), sur console comme sur PC.
+Non vérifié : le rendu sonore à l'oreille (synthèse écrite sans écoute) et le ressenti humain de l'aide aux débutants.
 
 ## Cohérence physique des animations
 Audit mesuré sur les planches (`tools/gen_sprites.py` + moteur) :

@@ -96,15 +96,32 @@ void init_match(Match& m, FighterId p1, FighterId p2, bool boss_match, uint32_t 
     create_fighter(m.f[1], p2, 2, boss_match);
 }
 
-void set_ai_level(Match& m, Difficulty diff) {
-    m.f[1].dmg_scale = g_dmg_scale[diff][m.f[1].id] * g_level_ai_mult[diff];
-    m.f[0].dmg_scale = g_dmg_scale[DIFF_MASTER][m.f[0].id] * g_level_human_mult[diff];
+static void apply_level_scales(Match& m) {
+    const int L = m.ai_level;
+    float ai = g_dmg_scale[L][m.f[1].id] * g_level_ai_mult[L];
+    float hu = g_dmg_scale[DIFF_MASTER][m.f[0].id] * g_level_human_mult[L];
+    for (int i = 0; i < m.assist; ++i) { ai *= ASSIST_AI; hu *= ASSIST_HUMAN; }
+    m.f[1].dmg_scale = ai;
+    m.f[0].dmg_scale = hu;
+}
+
+void set_ai_level(Match& m, Difficulty diff, int assist) {
+    m.leveled = true;
+    m.ai_level = (uint8_t)diff;
+    m.assist = (uint8_t)(diff == DIFF_NOVICE ? imax(0, imin(ASSIST_MAX, assist)) : 0);
+    apply_level_scales(m);
 }
 
 void start_next_round(Match& m) {
     const uint8_t k1 = m.f[0].ki, k2 = m.f[1].ki;
     const bool boss = m.f[1].boss;
     const FighterId i1 = m.f[0].id, i2 = m.f[1].id;
+    const float sc1 = m.f[0].dmg_scale, sc2 = m.f[1].dmg_scale;   // les coefficients du niveau valent pour TOUT le match
+
+    if (m.leveled && m.ai_level == DIFF_NOVICE) {
+        if (m.winner_slot == 2 && m.assist < ASSIST_MAX) m.assist++;
+        else if (m.winner_slot == 1 && m.assist > 0) m.assist--;
+    }
 
     m.round++;
     m.timer_frames = m.round_sec == 0 ? UNLIMITED_FRAMES : m.round_sec * 60;
@@ -120,6 +137,8 @@ void start_next_round(Match& m) {
 
     create_fighter(m.f[0], i1, 1, false);  m.f[0].ki = k1;
     create_fighter(m.f[1], i2, 2, boss);   m.f[1].ki = k2;
+    m.f[0].dmg_scale = sc1; m.f[1].dmg_scale = sc2;
+    if (m.leveled) apply_level_scales(m);
 }
 
 // -----------------------------------------------------------------------------
@@ -347,7 +366,10 @@ static void apply_damage(Match& m, Fighter& atk, Fighter& dfn, int raw, bool kno
 
     const bool riposte_hit = atk.riposte > 0 && atk.power < 2 && !unblockable;
     const float riposte_scale = riposte_hit ? RIPOSTE_BONUS : 1.0f;
-    const int dmg = imax(8, (int)std::lround(raw * power_scale * boss_scale * def_mitig * combo_scale * riposte_scale * atk.dmg_scale));
+    // Zone de clemence (Novice) : un joueur presque a terre prend des coups de l'IA plus legers : on perd en
+    // se battant jusqu'au bout, pas en se faisant achever en deux touches.
+    const float mercy = (m.leveled && m.ai_level == DIFF_NOVICE && atk.slot == 2 && dfn.hp * 4 < dfn.max_hp) ? MERCY_SCALE : 1.0f;
+    const int dmg = imax(8, (int)std::lround(raw * power_scale * boss_scale * def_mitig * combo_scale * riposte_scale * atk.dmg_scale * mercy));
 
     const bool was_attacking =
         dfn.action == A_LIGHT || dfn.action == A_HEAVY || dfn.action == A_LOW_KICK ||
@@ -411,7 +433,7 @@ static void do_parry(Match& m, Fighter& atk, Fighter& dfn, const Input* dfn_in) 
     atk.rep_count = 0; atk.rep_kind = 0; atk.spam = false;
     m.hitstop = 6;
     banner(m, BN_PARRY, dfn.id, 40);
-    sfx(m, SFX_BLOCK);
+    sfx(m, SFX_PARRY);
     spawn_particles(m, dfn.x + dfn.facing * 12, 172 + dfn.y, Rgb{250, 204, 21}, 12, 3.0f, 3);
 }
 

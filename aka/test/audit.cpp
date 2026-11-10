@@ -1,6 +1,6 @@
 /*
   audit.cpp — Banc de mesure « agent critique » du moteur (PC uniquement, aucun materiel).
-    sh test/run_audit.sh [frames|chain|bots|all]
+    sh test/run_audit.sh [frames|chain|bots|playtest|all]
   - frames : donnees d'images de chaque coup (demarrage, actif, avantage sur touche / garde)
   - chain  : enchainements d'un joueur qui matraque une touche (combos infinis ? degats maxi)
   - bots   : robots « betes » (balayage, saut, jab, boule, tortue) contre l'IA a chaque niveau
@@ -250,6 +250,94 @@ static void do_bots(int N) {
     }
 }
 
+
+// ------------------------------------------------------------------ playtest : trois testeurs virtuels
+// Karim : fan de jeux de combat (IA Maitre aux commandes), Lea : arcade, matraque les boutons,
+// Tom : joueur faible (reflexes lents, un ordre toutes les ~0,3 s, garde rarement).
+enum { T_KARIM, T_LEA, T_TOM, T_COUNT };
+static const char* TN[] = {"Karim (fan de combat)", "Lea (arcade, matraque)", "Tom (debutant)"};
+struct Tester { int kind; uint32_t rng = 12345; int t = 0; Input held; };
+static uint32_t trnd(Tester& t) { t.rng = t.rng * 1664525u + 1013904223u; return t.rng >> 8; }
+static Input tester_decide(Tester& T, Match& m) {
+    const Fighter& me = m.f[0]; const Fighter& op = m.f[1];
+    ++T.t;
+    const float dist = std::fabs(op.x - me.x);
+    Input in;
+    if (T.kind == T_KARIM) return ai_decide(m, m.f[0], m.f[1], DIFF_MASTER);
+    if (T.kind == T_LEA) {
+        if (!free_state(me)) return in;
+        if (dist > 50) { in.right = op.x > me.x; in.left = !in.right; if (trnd(T) % 40 == 0) in.up = true; }
+        const uint32_t r = trnd(T) % 100;
+        if ((T.t & 1) == 0) {
+            if (r < 34) in.a = in.jp_a = true;
+            else if (r < 62) in.b = in.jp_b = true;
+            else if (r < 68) in.special = in.jp_special = true;
+            else if (r < 76) { in.up = true; }
+            else if (r < 82) { in.down = true; in.b = in.jp_b = true; }
+            else if (r < 88) { in.left = me.facing == 1; in.right = me.facing != 1; }   // recule au hasard
+        }
+        return in;
+    }
+    // Tom : il decide toutes les 18 images (0,3 s) et maintient son ordre entre-temps.
+    if (T.t % 18 == 1) {
+        T.held = Input();
+        if (!free_state(me)) return T.held;
+        const uint32_t r = trnd(T) % 100;
+        if (dist > 60) { T.held.right = op.x > me.x; T.held.left = !T.held.right; if (r < 12) T.held.up = true; }
+        else if (r < 40) { T.held.a = T.held.jp_a = true; }
+        else if (r < 55) { T.held.b = T.held.jp_b = true; }
+        else if (r < 62) { T.held.special = T.held.jp_special = true; }
+        else if (r < 80) { T.held.left = me.facing == 1; T.held.right = me.facing != 1; }
+        else if (r < 90) { T.held.down = true; T.held.left = me.facing == 1; T.held.right = me.facing != 1; }
+    } else { T.held.jp_a = T.held.jp_b = T.held.jp_special = false; }
+    return T.held;
+}
+struct PtStat { int matches = 0, wins = 0, rounds = 0, rwins = 0, perfect_vs = 0, tense = 0; long frames = 0; int timeouts = 0; };
+static void play_tester(int kind, FighterId bf, FighterId af, Difficulty diff, uint32_t seed, PtStat& st) {
+    static Match m;
+    init_match(m, bf, af, false, seed);
+    set_ai_level(m, diff);
+    Tester T; T.kind = kind; T.rng = seed * 2654435761u + 7;
+    int end_hold = 0; bool counted = false; int fr = 0;
+    for (; fr < 60 * 60 * 8; ++fr) {
+        Input i1 = tester_decide(T, m);
+        Input i2 = ai_decide(m, m.f[1], m.f[0], diff);
+        step_match_2p(m, i1, i2);
+        if (m.phase == PH_ROUND_END && m.winner_slot) {
+            if (!counted) {
+                counted = true; ++st.rounds;
+                const int w = m.winner_slot - 1;
+                if (w == 0) ++st.rwins;
+                if (m.f[w].hp == m.f[w].max_hp && w == 1) ++st.perfect_vs;     // l'IA gagne sans une egratignure
+                if (m.f[w].hp > 0 && m.f[w].hp * 100 < m.f[w].max_hp * 30) ++st.tense;
+                if (m.banner == BN_TIME) ++st.timeouts;
+            }
+            if (++end_hold > 120) {
+                end_hold = 0; counted = false;
+                if (m.wins[0] >= m.rounds_to_win) { ++st.matches; ++st.wins; break; }
+                if (m.wins[1] >= m.rounds_to_win) { ++st.matches; break; }
+                start_next_round(m);
+            }
+        } else end_hold = 0;
+    }
+    st.frames += fr;
+}
+static void do_playtest(int N) {
+    std::printf("=== Session de test : 3 testeurs virtuels x 3 niveaux, %d matchs/paire (36 paires) ===\n", N);
+    std::printf("%-24s %-7s %7s %9s %9s %9s %8s\n", "testeur", "niveau", "victoires", "manches", "perfect-", "manches", "duree");
+    std::printf("%-24s %-7s %7s %9s %9s %9s %8s\n", "", "", "match", "gagnees", "subis", "serrees", "match");
+    const char* LV[] = {"Novice", "Arcade", "Maitre"};
+    for (int k = 0; k < T_COUNT; ++k) for (int d = 0; d < 3; ++d) {
+        PtStat st;
+        for (int a = 0; a < 6; ++a) for (int c = 0; c < 6; ++c) if (a != c)
+            for (int s = 0; s < N; ++s) play_tester(k, (FighterId)a, (FighterId)c, (Difficulty)d, 500 + s * 17 + a * 5 + c, st);
+        std::printf("%-24s %-7s %6.0f%% %8.0f%% %8.0f%% %8.0f%% %6.0f s\n", TN[k], LV[d],
+            st.matches ? 100.0 * st.wins / st.matches : 0.0, st.rounds ? 100.0 * st.rwins / st.rounds : 0.0,
+            st.rounds ? 100.0 * st.perfect_vs / st.rounds : 0.0, st.rounds ? 100.0 * st.tense / st.rounds : 0.0,
+            st.matches ? st.frames / 60.0 / st.matches : 0.0);
+    }
+}
+
 int main(int argc, char** argv) {
     const char* what = argc > 1 ? argv[1] : "all";
     const int N = argc > 2 ? std::atoi(argv[2]) : 3;
@@ -257,5 +345,6 @@ int main(int argc, char** argv) {
     if (all || !std::strcmp(what, "frames")) do_frames();
     if (all || !std::strcmp(what, "chain"))  { std::printf("\n"); do_chain(); }
     if (all || !std::strcmp(what, "bots"))   { std::printf("\n"); do_bots(N); }
+    if (!std::strcmp(what, "playtest"))      do_playtest(N);
     return 0;
 }

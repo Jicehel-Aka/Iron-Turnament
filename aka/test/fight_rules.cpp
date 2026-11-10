@@ -588,6 +588,69 @@ static void test_ki() {
     CHECK(m.f[1].ki == 33);
 }
 
+
+// -----------------------------------------------------------------------------
+// Niveaux sur TOUT le match, aide aux debutants, zone de clemence
+// -----------------------------------------------------------------------------
+static void test_level_and_assist() {
+    std::printf("[niveaux, aide aux debutants, clemence]\n");
+    // Les coefficients de niveau survivent au changement de manche (bug trouve en recette : ils etaient perdus des la manche 2).
+    for (int d = 0; d < 3; ++d) {
+        Match m; init_match(m, KENJI, TITAN, false, 9);
+        set_ai_level(m, (Difficulty)d);
+        const float a = m.f[1].dmg_scale, h = m.f[0].dmg_scale;
+        m.winner_slot = 1; start_next_round(m);                 // le joueur gagne la manche 1
+        CHECK(m.f[1].dmg_scale == a && m.f[0].dmg_scale == h);
+        m.winner_slot = 1; start_next_round(m);
+        CHECK(m.f[1].dmg_scale == a && m.f[0].dmg_scale == h);
+    }
+    // Hors set_ai_level (IA contre IA, reseau) : les coefficients posees a la main sont conserves aussi.
+    { Match m; init_match(m, KENJI, TITAN, false, 9);
+      m.f[0].dmg_scale = 1.234f; m.f[1].dmg_scale = 0.777f;
+      m.winner_slot = 2; start_next_round(m);
+      CHECK(m.f[0].dmg_scale == 1.234f && m.f[1].dmg_scale == 0.777f && m.assist == 0); }
+    // Novice : chaque manche perdue adoucit la suivante, chaque manche gagnee reprend une partie de l'aide, plafonnee.
+    { Match m; init_match(m, KENJI, TITAN, false, 9, MatchRules{3, 99});
+      set_ai_level(m, DIFF_NOVICE);
+      const float ai0 = m.f[1].dmg_scale, hu0 = m.f[0].dmg_scale;
+      m.winner_slot = 2; start_next_round(m);
+      CHECK(m.assist == 1 && m.f[1].dmg_scale < ai0 && m.f[0].dmg_scale > hu0);
+      m.winner_slot = 2; start_next_round(m); m.winner_slot = 2; start_next_round(m); m.winner_slot = 2; start_next_round(m);
+      CHECK(m.assist == ASSIST_MAX);
+      CHECK(std::fabs(m.f[1].dmg_scale - ai0 * ASSIST_AI * ASSIST_AI * ASSIST_AI) < 1e-5f);
+      m.winner_slot = 1; start_next_round(m);
+      CHECK(m.assist == ASSIST_MAX - 1); }
+    // Pas d'aide en Arcade ni en Maitre, meme apres des defaites.
+    for (int d = 1; d < 3; ++d) {
+        Match m; init_match(m, KENJI, TITAN, false, 9);
+        set_ai_level(m, (Difficulty)d, 3);
+        CHECK(m.assist == 0);
+        m.winner_slot = 2; start_next_round(m);
+        CHECK(m.assist == 0);
+    }
+    // Aide de depart (nouvel essai apres une defaite) : plafonnee et seulement en Novice.
+    { Match m; init_match(m, KENJI, TITAN, false, 9);
+      set_ai_level(m, DIFF_NOVICE, 2); CHECK(m.assist == 2);
+      set_ai_level(m, DIFF_NOVICE, 9); CHECK(m.assist == ASSIST_MAX); }
+    // Zone de clemence : le meme coup de l'IA fait moins mal a un joueur sous 25 % de vie (Novice uniquement).
+    auto hit_dmg = [](Difficulty d, int hp) {
+        Match m; init_match(m, KENJI, TITAN, false, 11);
+        set_ai_level(m, d);
+        m.f[1].dmg_scale = 1.0f;                                // isole l'effet de la clemence
+        m.phase = PH_FIGHT; m.phase_timer = 0;
+        m.f[0].x = 200; m.f[1].x = 226; m.f[0].facing = 1; m.f[1].facing = -1;
+        m.f[0].max_hp = 400; m.f[0].hp = (int16_t)hp;
+        Input none, hit; hit.a = hit.jp_a = true;
+        const int before = m.f[0].hp;
+        for (int i = 0; i < 60 && m.f[0].hp == before; ++i) step_match_2p(m, none, i == 0 ? hit : none);
+        return before - m.f[0].hp;
+    };
+    { const int full = hit_dmg(DIFF_NOVICE, 400), low = hit_dmg(DIFF_NOVICE, 90), master_low = hit_dmg(DIFF_MASTER, 90);
+      CHECK(full > 0 && low > 0 && master_low > 0);
+      CHECK(low < full);                                         // clemence
+      CHECK(master_low > low); }
+}
+
 int main() {
     test_ladder();
     test_shortcut_and_motions();
@@ -598,6 +661,7 @@ int main() {
     test_input_buffer();
     test_ground_rules();
     test_parry_riposte();
+    test_level_and_assist();
     test_round_flow();
     test_boss_boost();
     test_determinism();

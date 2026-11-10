@@ -95,6 +95,8 @@ S = [
  ('FIGHT',        "COMBATTEZ !",           "FIGHT!",               "KAMPF!",              "¡LUCHA!",             "COMBATTI!"),
  ('COUNTER',      "CONTRE !",              "COUNTER!",             "KONTER!",             "¡CONTRA!",            "CONTRO!"),
  ('PARRY',        "PARADE !",              "PARRY!",               "PARADE!",             "¡PARADA!",            "PARATA!"),
+ ('REMATCH',      "Revanche",              "Rematch",              "Revanche",            "Revancha",            "Rivincita"),
+ ('RETRY',        "Reessayer",             "Try again",            "Nochmal",             "Reintentar",          "Riprova"),
  ('RIPOSTE',      "RIPOSTE !",             "RIPOSTE!",             "GEGENSCHLAG!",        "¡RÉPLICA!",           "RIPOSTA!"),
  ('THROW',        "PROJECTION !",          "THROW!",               "WURF!",               "¡PROYECCION!",        "PROIEZIONE!"),
  ('GUARD_BREAK',  "BRISE-GARDE !",         "GUARD BREAK!",         "DECKUNG GEBROCHEN!",  "¡GUARDIA ROTA!",      "GUARDIA ROTTA!"),

@@ -26,6 +26,7 @@ struct MatchSetup {
     uint8_t level;     // 0 = Novice, 1 = Arcade, 2 = Maitre
     uint8_t rounds_to_win{2};   // manches a gagner (1, 2 ou 3)
     uint16_t round_sec{99};     // duree d'une manche en secondes ; 0 = illimitee
+    uint8_t assist{0};          // aide de depart (Novice) : +1 a chaque nouvel essai apres une defaite
 };
 
 struct GameModule {

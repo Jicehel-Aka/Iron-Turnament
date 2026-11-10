@@ -149,6 +149,11 @@ constexpr int PARRY_BLOCK   = 7;
 constexpr int BLOCKSTUN        = 9;
 constexpr int RIPOSTE_FRAMES   = 30;
 constexpr float RIPOSTE_BONUS  = 1.25f;
+// Aide aux debutants (niveau Novice seulement) : chaque manche perdue par le joueur rend la suivante un peu plus
+// douce (l'IA cogne moins, le joueur plus), chaque manche gagnee reprend une partie de l'aide.
+constexpr int   ASSIST_MAX = 3;
+constexpr float MERCY_SCALE = 0.75f;    // Novice : degats de l'IA contre un joueur sous 25 % de vie
+constexpr float ASSIST_AI = 0.78f, ASSIST_HUMAN = 1.12f;
 constexpr int KI_MAX = 100, KI_EX_COST = 50, KI_SUPER_COST = 100;
 constexpr int SUPER_STARTUP = 16, SUPER_ACTIVE = 8, SUPER_RECOVERY = 30;   // images logiques du SUPER
 
@@ -243,7 +248,7 @@ enum BannerId : uint8_t {
 enum SfxBit : uint16_t {
     SFX_WHIFF = 1, SFX_LIGHT = 2, SFX_HEAVY = 4, SFX_BLOCK = 8, SFX_SPECIAL = 16,
     SFX_THROW = 32, SFX_JUMP = 64, SFX_KO = 128, SFX_FINISH_STING = 256,
-    SFX_FINISHER = 512, SFX_BELL = 1024, SFX_VICTORY = 2048, SFX_TELEPORT = 4096, SFX_SUPER = 8192
+    SFX_FINISHER = 512, SFX_BELL = 1024, SFX_VICTORY = 2048, SFX_TELEPORT = 4096, SFX_SUPER = 8192, SFX_PARRY = 16384
 };
 
 constexpr int MAX_PROJ = 8;
@@ -278,6 +283,9 @@ struct Match {
     uint16_t  sfx;                   // evenements sonores accumules
     uint8_t   rounds_to_win;         // 1, 2 ou 3 (option)
     uint16_t  round_sec;             // duree d'une manche en secondes ; 0 = illimitee (option)
+    bool      leveled;               // set_ai_level a ete appele (les coefficients de niveau et l'aide s'appliquent)
+    uint8_t   ai_level;              // niveau choisi (Difficulty)
+    uint8_t   assist;                // paliers d'aide en cours, 0..ASSIST_MAX
 };
 
 // Reglages d'un match (options du jeu).
@@ -289,7 +297,7 @@ void init_match(Match& m, FighterId p1, FighterId p2, bool boss_match, uint32_t 
                 const MatchRules& rules = MatchRules());
 void start_next_round(Match& m);
 // Applique le coefficient du niveau `diff` au combattant de P2 (pilote par l'IA).
-void set_ai_level(Match& m, Difficulty diff);
+void set_ai_level(Match& m, Difficulty diff, int assist = 0);
 
 // UNE image logique a 60 Hz. `p1_in` : entrees du joueur. P2 est pilote par l'IA.
 void step_match(Match& m, const Input& p1_in, Difficulty diff);

@@ -35,7 +35,7 @@ static gb_audio_track_tone g_melody;
 static gb_audio_track_tone g_sfx;
 static gb_audio_track_pmf  g_pmf;      // crochet, inutilisé par défaut
 
-static float g_music_vol = 0.34f;      // discret : on joue aux dames, on calcule des rafles
+static float g_music_vol = 0.34f;      // reglage du joueur (Options) ecrase cette valeur par defaut
 static float g_sfx_vol   = 0.85f;
 
 // -----------------------------------------------------------------------------
@@ -116,24 +116,46 @@ void audio_set_sfx_volume(float v) {
 //
 constexpr int STEPS = 32;
 
-// --- Thème de partie : lent, aéré, presque une horloge -------------------------
+// --- Musique de combat : basse pulsee, arpeges, accroche -------------------------
+// Meme grille Am - F - C - G que le reste du jeu, mais a 135 ms la croche (~110 bpm) avec une basse qui
+// martele : on est dans un jeu de baston, pas devant un echiquier.
 static const uint8_t GAME_BASS[STEPS] = {
-    45,0,0,0, 0,0,0,0,   // La1
-    41,0,0,0, 0,0,0,0,   // Fa1
-    48,0,0,0, 0,0,0,0,   // Do2
-    43,0,0,0, 0,0,0,0,   // Sol1
+    45,0,45,0, 45,0,52,0,
+    41,0,41,0, 41,0,48,0,
+    48,0,48,0, 48,0,55,0,
+    43,0,43,0, 43,0,50,0,
 };
 static const uint8_t GAME_CHORD[STEPS] = {
-    57,0,60,0, 64,0,60,0,   // Am : la do mi
-    53,0,57,0, 60,0,57,0,   // F  : fa la do
-    60,0,64,0, 67,0,64,0,   // C  : do mi sol
-    55,0,59,0, 62,0,59,0,   // G  : sol si ré
+    57,60,64,60, 57,60,64,67,   // Am
+    53,57,60,57, 53,57,60,65,   // F
+    60,64,67,64, 60,64,67,72,   // C
+    55,59,62,59, 55,59,62,67,   // G
 };
 static const uint8_t GAME_MELODY[STEPS] = {
-     0,0,0,0, 64,0,0,0,
-     0,0,0,0, 60,0,0,0,
-     0,0,0,0, 67,0,0,65,
-     0,0,0,0, 62,0,0,0,
+    69,0,72,0, 76,0,74,72,
+    72,0,69,0, 65,0,69,72,
+    76,0,0,79, 76,0,74,72,
+    74,0,71,0, 67,0,71,74,
+};
+
+// --- Duel final : re mineur / la majeur, plus rapide, plus tendu ---------------
+static const uint8_t BOSS_BASS[STEPS] = {
+    38,0,38,38, 38,0,45,0,
+    46,0,46,46, 46,0,53,0,
+    48,0,48,48, 48,0,55,0,
+    45,0,45,45, 45,0,52,0,
+};
+static const uint8_t BOSS_CHORD[STEPS] = {
+    62,65,69,65, 62,65,69,74,   // Dm
+    58,62,65,62, 58,62,65,70,   // Bb
+    60,64,67,64, 60,64,67,72,   // C
+    57,61,64,61, 57,61,64,69,   // A
+};
+static const uint8_t BOSS_MELODY[STEPS] = {
+    74,0,77,0, 81,0,77,74,
+    77,0,74,0, 70,0,74,77,
+    79,0,0,76, 79,0,76,72,
+    73,0,76,0, 81,0,0,0,
 };
 
 // --- Écran-titre : même harmonie, mais plus présente et plus ample -------------
@@ -194,9 +216,10 @@ struct TuneDef {
 static const TuneDef TUNES[] = {
     { nullptr,     nullptr,      nullptr,      0,   false },  // None
     { TITLE_BASS,  TITLE_CHORD,  TITLE_MELODY, 300, true  },  // Title
-    { GAME_BASS,   GAME_CHORD,   GAME_MELODY,  400, true  },  // Game
+    { GAME_BASS,   GAME_CHORD,   GAME_MELODY,  135, true  },  // Game
     { WIN_BASS,    WIN_CHORD,    WIN_MELODY,   180, false },  // Victory
     { LOSE_BASS,   LOSE_CHORD,   LOSE_MELODY,  260, false },  // Defeat
+    { BOSS_BASS,   BOSS_CHORD,   BOSS_MELODY,  112, true  },  // Boss
 };
 
 static Tune     g_tune     = Tune::None;
@@ -312,6 +335,15 @@ void sfx_draw()        { sfx(440,  440, 0.55f, 0.10f, 400, T::SINE); }
 // Coup impossible : buzz court et franchement désagréable. Il faut qu'on
 // comprenne tout de suite qu'on s'est trompé.
 void sfx_illegal()  { sfx(150,  110,  0.55f, 0.20f,  90, T::SQUARE); }
+
+// --- Effets de combat -----------------------------------------------------------------------------------
+void sfx_hit_light() { sfx(420, 160, 0.85f, 0.05f,  55, T::NOISE); }
+void sfx_hit_heavy() { sfx(240,  60, 0.98f, 0.10f, 160, T::NOISE); }
+void sfx_block()     { sfx(1100, 800, 0.55f, 0.10f,  50, T::SQUARE); }
+void sfx_whoosh()    { sfx(900, 300, 0.22f, 0.02f,  75, T::NOISE); }
+void sfx_special()   { sfx(300, 900, 0.70f, 0.20f, 170, T::TRIANGLE); }
+void sfx_parry()     { sfx(1320, 1980, 0.65f, 0.25f, 130, T::SQUARE); }
+void sfx_jump()      { sfx(300, 520, 0.28f, 0.05f,  45, T::TRIANGLE); }
 
 void sfx_menu_ok()  { sfx(660,  990,  0.55f, 0.20f, 100, T::SQUARE); }
 void sfx_menu_back(){ sfx(500,  330,  0.50f, 0.15f, 100, T::SQUARE); }
