@@ -411,12 +411,31 @@ static void apply_damage(Match& m, Fighter& atk, Fighter& dfn, int raw, bool kno
         dfn.vx = -dfn.facing * 3.4f;
         dfn.vy = -4.2f;
     } else {
-        const bool gut = atk.action == A_LIGHT || atk.action == A_UPPERCUT;
+        const bool gut = atk.action == A_LIGHT && atk.y >= -6.0f;      // coup au corps ; l'uppercut vise le menton, un coup sauté la tête
         start_action(dfn, gut ? A_HITSTUN_GUT : A_HITSTUN, 16);
         dfn.vx = -dfn.facing * 2.1f;
     }
 
     check_round_finish(m, atk, dfn);
+}
+
+static SpecialDef eff_special(const Fighter& f, int idx);
+
+// Images ACTIVES (premiere, derniere incluses) d'une attaque : source unique pour la collision et pour l'animation.
+bool attack_window(const Fighter& f, int& a0, int& a1) {
+    switch (f.action) {
+    case A_LIGHT:       a0 = 4; a1 = 9;  return true;
+    case A_UPPERCUT:    a0 = 4; a1 = 10; return true;
+    case A_HEAVY:       a0 = 7; a1 = 13; return true;
+    case A_JUMP_ATTACK: a0 = 4; a1 = 16; return true;
+    case A_LOW_KICK:    a0 = 6; a1 = 12; return true;
+    case A_SPECIAL_1: case A_SPECIAL_2: case A_SPECIAL_3: {
+        const SpecialDef sp = eff_special(f, f.action - A_SPECIAL_1);
+        a0 = sp.startup; a1 = sp.startup + sp.active;
+        return true;
+    }
+    default: return false;
+    }
 }
 
 // Le defenseur peut parer s'il est libre ou deja en garde (et au sol).
@@ -694,6 +713,8 @@ static void ongoing_special(Match& m, Fighter& f, Fighter& opp) {
     }
 }
 
+constexpr float THROW_LAND_DX = 46.0f;   // retombee derriere le lanceur (distance approximative)
+
 static void normal_throw(Match& m, Fighter& atk, Fighter& dfn) {
     start_action(atk, A_THROW, 26);
     atk.vx = 0;
@@ -701,6 +722,15 @@ static void normal_throw(Match& m, Fighter& atk, Fighter& dfn) {
     const int dmg = (int)std::lround(92.0f * (def(atk.id).power / 62.0f));
     apply_damage(m, atk, dfn, dmg, true, true, BN_THROW);
     sfx(m, SFX_THROW);
+    // Une projection (type seoi-nage) : l'adversaire est soulevé, passe AU-DESSUS du lanceur et retombe derrière lui.
+    // Pas assez de place derrière le lanceur (mur) : il est simplement jeté devant, comme avant.
+    const float land = atk.x - atk.facing * THROW_LAND_DX;
+    if (dfn.action == A_KNOCKDOWN && land > MIN_X + 8.0f && land < MAX_X - 8.0f) {
+        dfn.x  = atk.x + atk.facing * 24.0f;
+        dfn.y  = -40.0f;
+        dfn.vy = -3.0f;
+        dfn.vx = -atk.facing * 3.4f;
+    }
 }
 
 static bool try_finisher(Match& m, Fighter& winner, Fighter& loser, const Input& in) {
@@ -825,7 +855,11 @@ static void update_fighter(Match& m, Fighter& f, Fighter& opp, const Input& in) 
         apply_physics(f);
         return;
     }
-    if ((can_act(f) && f.y >= 0) || special_cancel || ki_cancel) {
+    // A+B sans direction au corps a corps = projection (sinon raccourci « avant » de la technique spéciale).
+    const bool throw_range = ((e.jp_a && in.b) || (e.jp_b && in.a)) && !in.up && !in.down && !in.left && !in.right &&
+                             std::fabs(f.x - opp.x) <= 36.0f && opp.y >= -6 && opp.invuln <= 0 && can_act(f) && f.y >= 0 &&
+                             !special_cancel && !ki_cancel;
+    if (!throw_range && ((can_act(f) && f.y >= 0) || special_cancel || ki_cancel)) {
         const int k = detect_special(f, e);
         if (k >= 0) {
             clear_buffer();
@@ -960,24 +994,25 @@ static void check_melee(Match& m, Fighter& atk, Fighter& dfn, const Input& dfn_i
     int height = 0;                 // 0 MID, 1 LOW, 2 OVERHEAD
     bool knockdown = false;
 
+    if (!is_special(atk.action)) attack_window(atk, a0, a1);   // coups normaux ; les speciaux fixent leur fenetre plus bas
     switch (atk.action) {
     case A_LIGHT:
-        a0 = 4; a1 = 9; reach = 42 + reach_bonus; base = 46; chip = 0;
+        reach = 42 + reach_bonus; base = 46; chip = 0;
         height = atk.y < -6 ? 2 : 0;
         break;
     case A_UPPERCUT:
-        a0 = 4; a1 = 10; reach = 40 + reach_bonus; base = 58; chip = 0;
+        reach = 40 + reach_bonus; base = 58; chip = 0;
         height = 0; knockdown = dfn.y < -8;
         break;
     case A_HEAVY:
-        a0 = 7; a1 = 13; reach = 54 + reach_bonus; base = 82; chip = 4;
+        reach = 54 + reach_bonus; base = 82; chip = 4;
         height = atk.y < -6 ? 2 : 0;
         break;
     case A_JUMP_ATTACK:
-        a0 = 4; a1 = 16; reach = 56 + reach_bonus; base = 84; chip = 4; height = 2;
+        reach = 56 + reach_bonus; base = 84; chip = 4; height = 2;
         break;
     case A_LOW_KICK:
-        a0 = 6; a1 = 12; reach = 52 + reach_bonus; base = 72; chip = 3;
+        reach = 52 + reach_bonus; base = 72; chip = 3;
         height = 1; knockdown = true;
         break;
     case A_SPECIAL_1: case A_SPECIAL_2: case A_SPECIAL_3: {

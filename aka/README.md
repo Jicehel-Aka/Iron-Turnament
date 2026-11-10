@@ -234,6 +234,19 @@ Audit mesuré sur les planches (`tools/gen_sprites.py` + moteur) :
 - **Projectiles** : ils partent à hauteur de la main mesurée sur l'image de tir (40 à 46 px selon le combattant, 26 px = la ceinture auparavant).
 - Les vêtements et cheveux sont animés **dans les planches** (dessinés image par image) : le moteur ne fait pas de simulation de tissu.
 
+## Réalisme des mouvements (avis d'un pratiquant d'arts martiaux)
+Le retour ne précisait pas *quels* gestes étaient faux : l'agence a audité elle-même les points les plus visibles.
+- **Coups synchronisés avec la zone de touche** : la colonne de l'image (armement → extension → retour) est calculée à partir de la fenêtre
+  réellement active du coup (`attack_window` / `attack_col`). Le bras est tendu *au moment* où le coup peut toucher, pas avant/après.
+- **Projection** : A+B sans direction au corps à corps (≤ 36 px) est désormais une vraie projection. Elle était masquée par le raccourci
+  « avant » de la technique spéciale (chaque combattant en a un) et n'était donc jamais déclenchée. L'adversaire est soulevé, passe
+  **au-dessus** du lanceur et retombe **derrière** lui (sauf dos au mur : projection frontale). Avec une direction, les raccourcis
+  spéciaux fonctionnent comme avant.
+- **Recul à l'impact** : le touché est repoussé de quelques pixels, plus marqué sur un coup lourd. Le coup léger haut vise le
+  buste, le coup bas / uppercut déclenche la réaction « tête ».
+- Tests : `test_movement_realism` (synchro image/fenêtre de touche, trajectoire de projection, mur). Équilibre mesuré inchangé.
+- **Non vérifié** : le ressenti réel par un pratiquant ; les planches de sprites restent celles de l'auteur (pas de nouveaux dessins).
+
 ## Non repris du prototype web
 Mode histoire / textes de lore, mode 2 joueurs, LED. Les noms de coups restent en français dans
 toutes les langues (ce sont des noms propres).
